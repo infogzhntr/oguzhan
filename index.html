@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sıfıra Sıfır Kusursuz Filigran Şablonu</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* Genel sayfa düzeni */
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #1e1e24;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            gap: 25px;
+            height: 100vh;
+            box-sizing: border-box;
+            color: #fff;
+        }
+
+        /* Sol Taraf: Kontrol Paneli */
+        .control-panel {
+            flex: 1;
+            max-width: 320px;
+            background-color: #2a2a35;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            height: fit-content;
+            border: 1px solid #3a3a4a;
+        }
+
+        .control-panel h3 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid #3a3a4a;
+            padding-bottom: 12px;
+            font-size: 1.2rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+        }
+
+        .input-group input[type="text"] {
+            padding: 12px;
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #1e1e24;
+            color: #fff;
+            outline: none;
+        }
+
+        .input-group input[type="file"] {
+            padding: 8px 0;
+            color: #ccc;
+        }
+
+        /* İndirme Butonu */
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .download-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Sağ Taraf: Canlı Önizleme Alanı */
+        .preview-area {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid #3a3a4a;
+            overflow: hidden;
+        }
+
+        /* Şablon Kapsayıcısı */
+        .template-container {
+            position: relative;
+            display: inline-block; 
+            max-width: 100%;
+            max-height: 90vh;
+            background-color: #000; /* Arka planı siyah yaparak beyaz sızıntıları engelliyoruz */
+            overflow: hidden; /* Kenarlardan taşan pikselleri kırpar */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Köşelere Sıfırlanan Opak Beyaz Kutular */
+        .watermark-box {
+            position: absolute;
+            background-color: #ffffff;
+            padding: 3px 10px;
+            font-weight: bold;
+            font-size: 22px;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            z-index: 10;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: none; /* Çizgi oluşturabilecek ekstra gölgeler kapatıldı */
+        }
+
+        /* Beyaz sızıntıyı önlemek için tam sınır (0) yerine çok hafif dışa konumlandırma (-0.5px) */
+        .top-left { top: -0.5px; left: -0.5px; }
+        .top-right { top: -0.5px; right: -0.5px; }
+        .bottom-left { bottom: -0.5px; left: -0.5px; }
+
+        /* Ana Resim */
+        .main-image {
+            max-width: 100%;
+            max-height: 85vh;
+            display: block;
+            object-fit: contain;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Boş Durum Görünümü */
+        .no-image-placeholder {
+            padding: 60px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            border: 2px dashed #444;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <h3>Filigran Paneli</h3>
+        
+        <div class="input-group">
+            <label for="input-date">Tarih / Kod (Sol Üst)</label>
+            <input type="text" id="input-date" value="020830C TEM 2026">
+        </div>
+
+        <div class="input-group">
+            <label for="input-name">İsim (Sağ Üst)</label>
+            <input type="text" id="input-name" value="SARKE">
+        </div>
+
+        <div class="input-group">
+            <label for="input-coord">Koordinat (Sol Alt)</label>
+            <input type="text" id="input-coord" value="38SLG 96681 08362">
+        </div>
+
+        <div class="input-group">
+            <label for="image-upload">Fotoğraf Yükle</label>
+            <input type="file" id="image-upload" accept="image/*">
+        </div>
+
+        <button id="download-btn" class="download-btn">Görseli Filigranlı İndir</button>
+    </div>
+
+    <div class="preview-area">
+        <div id="placeholder-box" class="no-image-placeholder">
+            Lütfen sol panelden bir fotoğraf yükleyin...
+        </div>
+
+        <div id="template-wrapper" class="template-container" style="display: none;">
+            <div class="watermark-box top-left" id="view-date">020830C TEM 2026</div>
+            <div class="watermark-box top-right" id="view-name">SARKE</div>
+            <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
+
+            <img id="preview-img" class="main-image" src="" alt="Önizleme">
+        </div>
+    </div>
+
+    <script>
+        const inputDate = document.getElementById('input-date');
+        const inputName = document.getElementById('input-name');
+        const inputCoord = document.getElementById('input-coord');
+        const imageUpload = document.getElementById('image-upload');
+        const downloadBtn = document.getElementById('download-btn');
+
+        const viewDate = document.getElementById('view-date');
+        const viewName = document.getElementById('view-name');
+        const viewCoord = document.getElementById('view-coord');
+        
+        const placeholderBox = document.getElementById('placeholder-box');
+        const templateWrapper = document.getElementById('template-wrapper');
+        const previewImg = document.getElementById('preview-img');
+
+        inputDate.addEventListener('input', () => { viewDate.textContent = inputDate.value; });
+        inputName.addEventListener('input', () => { viewName.textContent = inputName.value; });
+        inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
+
+        imageUpload.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.addEventListener('load', function() {
+                    previewImg.setAttribute('src', this.result);
+                    placeholderBox.style.display = 'none';
+                    templateWrapper.style.display = 'inline-block';
+                    downloadBtn.style.display = 'block';
+                });
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Kusursuz Çıktı İçin İndirme Ayarları
+        downloadBtn.addEventListener('click', () => {
+            html2canvas(templateWrapper, {
+                useCORS: true,
+                scale: 2,               // Netlik için 2 kat çözünürlük
+                logging: false,
+                backgroundColor: null,  // Arka plan sızıntılarını önler
+                width: templateWrapper.offsetWidth,
+                height: templateWrapper.offsetHeight
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'filigranli_gorsel.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+    </script>
+
+</body>
+</html>
