@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    
+    <title>Askeri Veri Otomasyonlu Filigran Şablonu</title>
+    
+    <!-- KÜTÜPHANELER -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.js"></script>
+    
+    <style>
+        /* --- AÇILIŞ (YÜKLEME) EKRANI STİLLERİ --- */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111116;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+
+        .loader-radar {
+            width: 70px;
+            height: 70px;
+            border: 3px solid rgba(0, 123, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            border-bottom-color: #007bff;
+            animation: spin-radar 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            margin-bottom: 25px;
+        }
+
+        .loading-text {
+            color: #007bff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 3px solid #007bff;
+            width: 21ch;
+            animation: typing 1.5s steps(21, end), blink-caret 0.75s step-end infinite;
+        }
+
+        #login-panel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: #2a2a35;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #3a3a4a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 280px;
+            text-align: center;
+        }
+
+        #login-panel h4 {
+            margin: 0 0 5px 0;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: #1e1e24;
+            color: #fff;
+            outline: none;
+            text-align: center;
+            box-sizing: border-box;
+            letter-spacing: 4px;
+        }
+
+        .login-btn {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-btn:hover { background-color: #0056b3; }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            font-weight: bold;
+            display: none;
+        }
+
+        @keyframes spin-radar { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes typing { from { width: 0 } to { width: 21ch } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #007bff; } }
+
+        .fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* --- ANA UYGULAMA STİLLERİ --- */
+        body {
+            margin: 0;
+            padding: 15px;
+            background-color: #1e1e24;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            color: #fff;
+        }
+
+        @media (min-width: 768px) { body { flex-direction: row; padding: 20px; } }
+
+        .control-panel {
+            flex: 1;
+            width: 100%;
+            max-width: 100%;
+            background-color: #2a2a35;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: fit-content;
+            border: 1px solid #3a3a4a;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) { .control-panel { max-width: 320px; } }
+
+        .control-panel h3 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid #3a3a4a;
+            padding-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+        }
+
+        .input-group-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #1e1e24;
+            color: #fff;
+            outline: none;
+        }
+
+        /* Ortak Taktiksel Buton Tasarımı */
+        .auto-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auto-btn:hover { background-color: #0056b3; }
+
+        .input-group input[type="file"] {
+            padding: 5px 0;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 5px;
+            display: none;
+            width: 100%;
+        }
+        .download-btn:hover { background-color: #218838; }
+
+        .preview-area {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            border-radius: 12px;
+            padding: 5px;
+            border: 1px solid #3a3a4a;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .template-container {
+            position: relative;
+            display: inline-block; 
+            max-width: 100%;
+            background-color: #000;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .watermark-box {
+            position: absolute;
+            background-color: #ffffff !important;
+            padding: 2px 6px;
+            font-weight: bold;
+            font-size: 4vw; 
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000000 !important; 
+            text-decoration: none !important; 
+            z-index: 10;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            pointer-events: none;
+            line-height: 1.1;
+        }
+
+        .watermark-box * {
+            color: #000000 !important;
+            text-decoration: none !important;
+        }
+
+        @media (min-width: 768px) {
+            .watermark-box { font-size: 20px; padding: 3px 10px; }
+        }
+
+        .top-left { top: 0; left: 0; }
+        .top-right { top: 0; right: 0; }
+        .bottom-left { bottom: 0; left: 0; }
+
+        .main-image {
+            max-width: 100%;
+            height: auto;
+            max-height: 65vh; 
+            display: block;
+            object-fit: contain;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media (min-width: 768px) { .main-image { max-height: 80vh; } }
+
+        .no-image-placeholder {
+            padding: 40px 20px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AÇILIŞ VE ŞİFRE EKRANI KAPSAYICISI -->
+    <div id="splash-screen">
+        <div id="loader-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="loader-radar"></div>
+            <div class="loading-text">SISTEM HAZIRLANIYOR...</div>
+        </div>
+
+        <div id="login-panel">
+            <h4>KULLANICI GİRİŞİ</h4>
+            <input type="password" id="password-field" class="password-input" placeholder="••••" maxlength="12">
+            <div id="error-msg" class="error-message">ŞİFRE HATALI!</div>
+            <button id="login-submit" class="login-btn">SİSTEME GİRİŞ YAP</button>
+        </div>
+    </div>
+
+    <!-- SOL PANEL -->
+    <div class="control-panel">
+            <label for="input-name">Tasarım Ve Kodlama</label>
+            <label for="input-name">Oğuzhan EMİRLİOĞLU</label>
+        
+        <div class="input-group">
+            <label for="input-date">Tarih / Kod (Sol Üst)</label>
+            <div class="input-group-row">
+                <input type="text" id="input-date" value="Saat Ve Tarih">
+                <button id="time-btn" class="auto-btn" type="button">📍 Çek</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="input-name">İsim (Sağ Üst)</label>
+            <input type="text" id="input-name" value="SARKE">
+        </div>
+
+        <div class="input-group">
+            <label for="input-coord">Koordinat (Sol Alt)</label>
+            <div class="input-group-row">
+                <input type="text" id="input-coord" value="Koordinat">
+                <button id="gps-btn" class="auto-btn" type="button">📍 Çek</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="image-upload">Fotoğraf Yükle</label>
+            <input type="file" id="image-upload" accept="image/*">
+        </div>
+
+        <button id="download-btn" class="download-btn">Görseli Filigranlı İndir</button>
+    </div>
+
+    <!-- SAĞ PANEL -->
+    <div class="preview-area">
+        <div id="placeholder-box" class="no-image-placeholder">
+            Lütfen sol panelden bir fotoğraf yükleyin...
+        </div>
+
+        <div id="template-wrapper" class="template-container" style="display: none;">
+            <div class="watermark-box top-left" id="view-date">Saat ve tarih</div>
+            <div class="watermark-box top-right" id="view-name">SARKE</div>
+            <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
+
+            <img id="preview-img" class="main-image" src="" alt="Önizleme">
+        </div>
+    </div>
+
+    <script>
+        // --- ŞİFRE VE SÜRE KONTROLÜ ---
+        const DOGRU_SIFRE = "1234"; 
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loader-content').style.display = 'none';
+                document.getElementById('login-panel').style.display = 'flex';
+                document.getElementById('password-field').focus(); 
+            }, 3000); 
+        });
+
+        const passwordField = document.getElementById('password-field');
+        const loginSubmit = document.getElementById('login-submit');
+        const errorMsg = document.getElementById('error-msg');
+        const splashScreen = document.getElementById('splash-screen');
+
+        function sifreKontrolEt() {
+            if (passwordField.value === DOGRU_SIFRE) {
+                splashScreen.classList.add('fade-out'); 
+            } else {
+                errorMsg.style.display = 'block'; 
+                passwordField.value = ''; 
+            }
+        }
+
+        loginSubmit.addEventListener('click', sifreKontrolEt);
+        passwordField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sifreKontrolEt(); });
+
+
+        // --- ANA UYGULAMA PANELİ ---
+        const inputDate = document.getElementById('input-date');
+        const inputName = document.getElementById('input-name');
+        const inputCoord = document.getElementById('input-coord');
+        const imageUpload = document.getElementById('image-upload');
+        const downloadBtn = document.getElementById('download-btn');
+        const gpsBtn = document.getElementById('gps-btn');
+        const timeBtn = document.getElementById('time-btn');
+
+        const viewDate = document.getElementById('view-date');
+        const viewName = document.getElementById('view-name');
+        const viewCoord = document.getElementById('view-coord');
+        
+        const placeholderBox = document.getElementById('placeholder-box');
+        const templateWrapper = document.getElementById('template-wrapper');
+        const previewImg = document.getElementById('preview-img');
+
+        inputDate.addEventListener('input', () => { viewDate.textContent = inputDate.value; });
+        inputName.addEventListener('input', () => { viewName.textContent = inputName.value; });
+        inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
+
+        // OTOMATİK ASKERİ TARİH / SAAT (DTG) ÇEKME FONKSİYONU
+        timeBtn.addEventListener('click', () => {
+            const simdi = new Date();
+            
+            // Bileşenleri al ve eksik basamakları sıfırla doldur (Örn: 2 -> "02")
+            const gun = String(simdi.getDate()).padStart(2, '0');
+            const saat = String(simdi.getHours()).padStart(2, '0');
+            const dakika = String(simdi.getMinutes()).padStart(2, '0');
+            const yil = simdi.getFullYear();
+            
+            // Askeri Ay Kısaltmaları (Türkçe)
+            const aylar = ["OCA", "SUB", "MAR", "NIS", "MAY", "HAZ", "TEM", "AGU", "EYL", "EKM", "KAS", "ARA"];
+            const ayKisa = aylar[simdi.getMonth()];
+            
+            // Türkiye GMT+3 olduğu için askeri zaman harfi "C" (Charlie)'dir.
+            const zamanHarfi = "C"; 
+            
+            // Örnek Format Çıktısı: 020830C TEM 2026
+            const askeriFormat = `${gun}${saat}${dakika}${zamanHarfi} ${ayKisa} ${yil}`;
+            
+            inputDate.value = askeriFormat;
+            viewDate.textContent = askeriFormat;
+        });
+
+        // GPS -> MGRS Çevirici
+        gpsBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                return;
+            }
+            gpsBtn.textContent = "⌛...";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    try {
+                        let mgrsCoord = mgrs.forward([lng, lat]); 
+                        let zone = mgrsCoord.substring(0, 5); 
+                        let easting = mgrsCoord.substring(5, 10); 
+                        let northing = mgrsCoord.substring(10, 15); 
+                        let formattedMGRS = `${zone} ${easting} ${northing}`;
+                        
+                        inputCoord.value = formattedMGRS;
+                        viewCoord.textContent = formattedMGRS;
+                        gpsBtn.textContent = "📍 Çek";
+                    } catch (error) {
+                        alert("Koordinat dönüşümünde bir hata oluştu.");
+                        gpsBtn.textContent = "📍 Çek";
+                    }
+                },
+                (error) => {
+                    alert("Konum alınamadı. İzinleri kontrol edin.");
+                    gpsBtn.textContent = "📍 Çek";
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+
+        imageUpload.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.addEventListener('load', function() {
+                    previewImg.setAttribute('src', this.result);
+                    placeholderBox.style.display = 'none';
+                    templateWrapper.style.display = 'inline-block';
+                    downloadBtn.style.display = 'block';
+                });
+                reader.readAsDataURL(file);
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            window.scrollTo(0,0);
+            html2canvas(templateWrapper, {
+                useCORS: true,
+                allowTaint: true,
+                scale: window.devicePixelRatio || 2,
+                logging: false,
+                backgroundColor: null,
+                scrollX: 0,
+                scrollY: 0,
+                width: templateWrapper.getBoundingClientRect().width,
+                height: templateWrapper.getBoundingClientRect().height
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'filigranli_gorsel.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+    </script>
+
+</body>
+</html>
