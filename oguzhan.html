@@ -348,7 +348,7 @@
             <input type="file" id="image-upload" accept="image/*">
         </div>
 
-        <button id="download-btn" class="download-btn">Görseli Filigranlı İndir</button>
+        <button id="download-btn" class="download-btn">Kaydet</button>
     </div>
 
     <!-- SAĞ PANEL -->
@@ -503,7 +503,7 @@
                 height: templateWrapper.getBoundingClientRect().height
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'filigranli_gorsel.png';
+                link.download = 'faaliyet_fotografi.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
