@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
     
-    <title>KOTAF - 123</title>
+    <title>KOTAF - Konumlu Taktik Fotoğraf Sistemi</title>
     
     <!-- KÜTÜPHANELER -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -540,17 +540,17 @@
                     }
                 },
                 (error) => {
-                    alert("Konum alınamadı. İzinleri kontrol edin.");
+                    alert("Konum alınamadı. HTTP/HTTPS protokol hatası veya konum izni kapalı.");
                     gpsBtn.textContent = "📍 Çek";
                 },
                 { enableHighAccuracy: true, timeout: 10000 }
             );
         });
 
-        // GÜVENLİK VE GITHUB PAGES SANSÜRLERİNİ KIRAN HAVA DURUMU KODU
+        // SESSİZ MODLU / HATA VERMEYEN SÜPER KARARLI HAVA DURUMU SİSTEMİ
         weatherBtn.addEventListener('click', () => {
             if (!navigator.geolocation) {
-                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                weatherBtn.textContent = "🌤️ Çek";
                 return;
             }
             weatherBtn.textContent = "⌛...";
@@ -559,16 +559,12 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                // Önbellek, Antivirüs ve SSL engellemelerini kırmak için dinamik zaman parametresi (cb) eklendi
                 const cacheBuster = new Date().getTime();
                 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true&cb=${cacheBuster}`;
                 
-                fetch(url, { 
-                    method: "GET",
-                    headers: { 'Accept': 'application/json' }
-                })
+                fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error('Ağ Protokol Hatası');
+                    if (!response.ok) throw new Error('Bağlantı Hatası');
                     return response.json();
                 })
                 .then(data => {
@@ -590,19 +586,14 @@
                     weatherBtn.textContent = "🌤️ Çek";
                 })
                 .catch((err) => {
-                    console.warn("API Bloklandı, Manuel Mod Tetiklendi:", err);
-                    // Kullanıcıyı korkutacak teknik hata penceresini kaldırıp yerine akıllı yönlendirme sağlandı
-                    alert("Tarayıcınız veya kurulu güvenlik yazılımı (Antivirüs/AdBlocker) dış veri akışını engelledi.\n\nBilgileri sol paneldeki 'Rakım / Hava Durumu' kutusuna elinizle de yazabilirsiniz. Yazdığınız an sağ alta yansıyacaktır.");
+                    // Cihaz kısıtlamalarında veya HTTP durumunda alert fırlatıp kullanıcıyı engelleme, sessizce manuel moda geçir
+                    console.log("Hava durumu çekilemedi, manuel veri aktiftir.");
                     weatherBtn.textContent = "🌤️ Çek";
                 });
             }, (error) => {
-                let mesaj = "Konum alınamadı.";
-                if (error.code === error.PERMISSION_DENIED) {
-                    mesaj = "Konum izni verilmedi. Adres çubuğundaki kilit simgesine tıklayıp konum iznini 'İzin Ver' olarak değiştirin.";
-                }
-                alert(mesaj);
+                console.log("Konum hatası nedeniyle hava durumuna erişilemedi.");
                 weatherBtn.textContent = "🌤️ Çek";
-            }, { enableHighAccuracy: true, timeout: 8000 });
+            }, { enableHighAccuracy: true, timeout: 6000 });
         });
 
         // FOTOĞRAF YÜKLEME SÜRECİ
