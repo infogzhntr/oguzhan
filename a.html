@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    
+    <title>KOTAF - Konumlu Taktik Fotoğraf Sistemi</title>
+    
+    <!-- KÜTÜPHANELER -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.js"></script>
+    
+    <style>
+        /* --- AÇILIŞ (YÜKLEME) EKRANI STİLLERİ --- */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111116;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+
+        .loader-radar {
+            width: 70px;
+            height: 70px;
+            border: 3px solid rgba(0, 123, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            border-bottom-color: #007bff;
+            animation: spin-radar 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            margin-bottom: 25px;
+        }
+
+        .loading-text {
+            color: #007bff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 3px solid #007bff;
+            width: 25ch;
+            animation: typing 1.5s steps(25, end), blink-caret 0.75s step-end infinite;
+        }
+
+        #login-panel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: #2a2a35;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #3a3a4a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 280px;
+            text-align: center;
+        }
+
+        #login-panel h4 {
+            margin: 0 0 5px 0;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: #1e1e24;
+            color: #fff;
+            outline: none;
+            text-align: center;
+            box-sizing: border-box;
+            letter-spacing: 4px;
+        }
+
+        .login-btn {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-btn:hover { background-color: #0056b3; }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            font-weight: bold;
+            display: none;
+        }
+
+        @keyframes spin-radar { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes typing { from { width: 0 } to { width: 25ch } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #007bff; } }
+
+        .fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* --- ANA UYGULAMA STİLLERİ --- */
+        body {
+            margin: 0;
+            padding: 15px;
+            background-color: #1e1e24;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            color: #fff;
+        }
+
+        @media (min-width: 768px) { body { flex-direction: row; padding: 20px; } }
+
+        .control-panel {
+            flex: 1;
+            width: 100%;
+            max-width: 100%;
+            background-color: #2a2a35;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: fit-content;
+            border: 1px solid #3a3a4a;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) { .control-panel { max-width: 320px; } }
+
+        .control-panel h3 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid #3a3a4a;
+            padding-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+        }
+
+        .input-group-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #1e1e24;
+            color: #fff;
+            outline: none;
+        }
+
+        .auto-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auto-btn:hover { background-color: #0056b3; }
+
+        .toggle-logo-btn {
+            background-color: #4a4a5a;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: center;
+        }
+        .toggle-logo-btn.active {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .input-group input[type="file"] {
+            padding: 5px 0;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 5px;
+            display: none;
+            width: 100%;
+        }
+        .download-btn:hover { background-color: #218838; }
+
+        .preview-area {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            border-radius: 12px;
+            padding: 5px;
+            border: 1px solid #3a3a4a;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .template-container {
+            position: relative;
+            display: inline-block; 
+            max-width: 100%;
+            background-color: #000;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .watermark-box {
+            position: absolute;
+            background-color: #ffffff !important;
+            padding: 2px 6px;
+            font-weight: bold;
+            font-size: 4vw; 
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000000 !important; 
+            z-index: 10;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            pointer-events: none;
+            line-height: 1.1;
+        }
+
+        .watermark-box * { color: #000000 !important; }
+
+        /* Konumlandırma Sınıfları */
+        .top-left { top: 0; left: 0; }
+        .top-right { top: 0; right: 0; }
+        .bottom-left { bottom: 0; left: 0; }
+        .bottom-right { bottom: 0; right: 0; } /* Yeni Eklenen Sağ Alt Bilgisi */
+
+        /* Sağ Alt Logo Çerçevesi (Bilgilerin Üstüne Binmemesi İçin Yukarı Taşındı) */
+        .watermark-logo-box {
+            position: absolute;
+            bottom: 6.5vw; /* Alt yazı bandının yüksekliğine göre yukarı kaydırıldı */
+            right: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+            padding: 5px;
+        }
+
+        .watermark-logo-box img {
+            height: 12vw;
+            max-height: 60px;
+            width: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        @media (min-width: 768px) {
+            .watermark-box { font-size: 20px; padding: 3px 10px; }
+            .watermark-logo-box { bottom: 32px; } /* PC görünümünde sabit yükseklik senkronizasyonu */
+            .watermark-logo-box img { height: 60px; }
+        }
+
+        .main-image {
+            max-width: 100%;
+            height: auto;
+            max-height: 65vh; 
+            display: block;
+            object-fit: contain;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media (min-width: 768px) { .main-image { max-height: 80vh; } }
+
+        .no-image-placeholder {
+            padding: 40px 20px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AÇILIŞ VE ŞİFRE EKRANI KAPSAYICISI -->
+    <div id="splash-screen">
+        <div id="loader-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="loader-radar"></div>
+            <div class="loading-text">KOTAF SISTEMI HAZIRLANIYOR...</div>
+        </div>
+
+        <div id="login-panel">
+            <h4>KULLANICI GİRİŞİ</h4>
+            <input type="password" id="password-field" class="password-input" placeholder="••••" maxlength="12">
+            <div id="error-msg" class="error-message">ŞİFRE HATALI!</div>
+            <button id="login-submit" class="login-btn">SİSTEME GİRİŞ YAP</button>
+        </div>
+    </div>
+
+    <!-- SOL PANEL -->
+    <div class="control-panel">
+        <h3>KOTAF Kontrol Paneli</h3>
+        
+        <div class="input-group">
+            <label for="input-date">Tarih / Kod (Sol Üst)</label>
+            <div class="input-group-row">
+                <input type="text" id="input-date" value="020830C TEM 2026">
+                <button id="time-btn" class="auto-btn" type="button">📍 Çek</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="input-name">İsim (Sağ Üst)</label>
+            <input type="text" id="input-name" value="SARKE">
+        </div>
+
+        <div class="input-group">
+            <label for="input-coord">Koordinat (Sol Alt)</label>
+            <div class="input-group-row">
+                <input type="text" id="input-coord" value="38SLG 96681 08362">
+                <button id="gps-btn" class="auto-btn" type="button">📍 Çek</button>
+            </div>
+        </div>
+
+        <!-- YENİ: RAKIM VE HAVA DURUMU GİRİŞ GRUBU -->
+        <div class="input-group">
+            <label for="input-weather">Rakım / Hava Durumu (Sağ Alt)</label>
+            <div class="input-group-row">
+                <input type="text" id="input-weather" value="H: 960m | 24°C AÇIK">
+                <button id="weather-btn" class="auto-btn" type="button">🌤️ Çek</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="image-upload">Faaliyet Fotoğrafı Yükle</label>
+            <input type="file" id="image-upload" accept="image/*">
+        </div>
+
+        <div class="input-group" style="border-top: 1px solid #3a3a4a; padding-top: 10px;">
+            <label>Logo / Arma Kontrolü</label>
+            <button id="toggle-logo-btn" class="toggle-logo-btn" type="button">🔲 Logo Ekle: PASİF</button>
+        </div>
+
+        <button id="download-btn" class="download-btn">Görseli Filigranlı İndir</button>
+    </div>
+
+    <!-- SAĞ PANEL (ÖNİZLEME) -->
+    <div class="preview-area">
+        <div id="placeholder-box" class="no-image-placeholder">
+            Lütfen sol panelden bir faaliyet fotoğrafı yükleyin...
+        </div>
+
+        <div id="template-wrapper" class="template-container" style="display: none;">
+            <div class="watermark-box top-left" id="view-date">020830C TEM 2026</div>
+            <div class="watermark-box top-right" id="view-name">SARKE</div>
+            <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
+            
+            <!-- YENİ: Sağ Alt Filigran Kutusu -->
+            <div class="watermark-box bottom-right" id="view-weather">H: 960m | 24°C AÇIK</div>
+            
+            <!-- Logo Alanı (Yazı kutusunun tam üzerinde duracak şekilde ayarlandı) -->
+            <div class="watermark-logo-box" id="logo-wrapper">
+                <img id="view-logo" src="" alt="Arma" crossOrigin="anonymous">
+            </div>
+
+            <img id="preview-img" class="main-image" src="" alt="Önizleme">
+        </div>
+    </div>
+
+    <script>
+
+        // --- ŞİFRE, SÜRE VE SABİT LOGO AYARLARI ---
+        const DOGRU_SIFRE = "1234"; 
+        const SABIT_LOGO_URL = "https://i.hizliresim.com/8q5y1lk.png";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loader-content').style.display = 'none';
+                document.getElementById('login-panel').style.display = 'flex';
+                document.getElementById('password-field').focus(); 
+            }, 3000); 
+            document.getElementById('view-logo').setAttribute('src', SABIT_LOGO_URL);
+        });
+
+        const passwordField = document.getElementById('password-field');
+        const loginSubmit = document.getElementById('login-submit');
+        const errorMsg = document.getElementById('error-msg');
+        const splashScreen = document.getElementById('splash-screen');
+
+        function sifreKontrolEt() {
+            if (passwordField.value === DOGRU_SIFRE) {
+                splashScreen.classList.add('fade-out'); 
+            } else {
+                errorMsg.style.display = 'block'; 
+                passwordField.value = ''; 
+            }
+        }
+
+        loginSubmit.addEventListener('click', sifreKontrolEt);
+        passwordField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sifreKontrolEt(); });
+
+
+        // --- ANA UYGULAMA PANELİ ---
+        const inputDate = document.getElementById('input-date');
+        const inputName = document.getElementById('input-name');
+        const inputCoord = document.getElementById('input-coord');
+        const inputWeather = document.getElementById('input-weather'); // Yeni
+        const imageUpload = document.getElementById('image-upload');
+        const toggleLogoBtn = document.getElementById('toggle-logo-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const gpsBtn = document.getElementById('gps-btn');
+        const timeBtn = document.getElementById('time-btn');
+        const weatherBtn = document.getElementById('weather-btn'); // Yeni
+
+        const viewDate = document.getElementById('view-date');
+        const viewName = document.getElementById('view-name');
+        const viewCoord = document.getElementById('view-coord');
+        const viewWeather = document.getElementById('view-weather'); // Yeni
+        const logoWrapper = document.getElementById('logo-wrapper'); 
+        
+        const placeholderBox = document.getElementById('placeholder-box');
+        const templateWrapper = document.getElementById('template-wrapper');
+        const previewImg = document.getElementById('preview-img');
+
+        inputDate.addEventListener('input', () => { viewDate.textContent = inputDate.value; });
+        inputName.addEventListener('input', () => { viewName.textContent = inputName.value; });
+        inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
+        inputWeather.addEventListener('input', () => { viewWeather.textContent = inputWeather.value; }); // Yeni
+
+        // LOGO AÇ / KAPAT BUTONU KONTROLÜ
+        let logoAktifMi = false;
+        toggleLogoBtn.addEventListener('click', () => {
+            logoAktifMi = !logoAktifMi;
+            if (logoAktifMi) {
+                toggleLogoBtn.textContent = "✅ Logo Ekle: AKTİF";
+                toggleLogoBtn.classList.add('active');
+                logoWrapper.style.display = 'block';
+            } else {
+                toggleLogoBtn.textContent = "🔲 Logo Ekle: PASİF";
+                toggleLogoBtn.classList.remove('active');
+                logoWrapper.style.display = 'none';
+            }
+        });
+
+        // OTOMATİK ASKERİ TARİH / SAAT (DTG) ÇEKME FONKSİYONU
+        timeBtn.addEventListener('click', () => {
+            const simdi = new Date();
+            const gun = String(simdi.getDate()).padStart(2, '0');
+            const saat = String(simdi.getHours()).padStart(2, '0');
+            const dakika = String(simdi.getMinutes()).padStart(2, '0');
+            const yil = simdi.getFullYear();
+            
+            const aylar = ["OCA", "SUB", "MAR", "NIS", "MAY", "HAZ", "TEM", "AGU", "EYL", "EKM", "KAS", "ARA"];
+            const ayKisa = aylar[simdi.getMonth()];
+            const zamanHarfi = "C"; 
+            
+            const askeriFormat = `${gun}${saat}${dakika}${zamanHarfi} ${ayKisa} ${yil}`;
+            
+            inputDate.value = askeriFormat;
+            viewDate.textContent = askeriFormat;
+        });
+
+        // GPS -> MGRS Çevirici
+        gpsBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                return;
+            }
+            gpsBtn.textContent = "⌛...";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    try {
+                        let mgrsCoord = mgrs.forward([lng, lat]); 
+                        let zone = mgrsCoord.substring(0, 5); 
+                        let easting = mgrsCoord.substring(5, 10); 
+                        let northing = mgrsCoord.substring(10, 15); 
+                        let formattedMGRS = `${zone} ${easting} ${northing}`;
+                        
+                        inputCoord.value = formattedMGRS;
+                        viewCoord.textContent = formattedMGRS;
+                        gpsBtn.textContent = "📍 Çek";
+                    } catch (error) {
+                        alert("Koordinat dönüşümünde bir hata oluştu.");
+                        gpsBtn.textContent = "📍 Çek";
+                    }
+                },
+                (error) => {
+                    alert("Konum alınamadı. İzinleri kontrol edin.");
+                    gpsBtn.textContent = "📍 Çek";
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+
+        // YENİ: OTOMATİK RAKIM VE HAVA DURUMU ÇEKME (AÇIK KAYNAK APILER)
+        weatherBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                return;
+            }
+            weatherBtn.textContent = "⌛...";
+            
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                // Open-Meteo API kullanılarak ücretsiz ve anahtarsız veri çekimi
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`;
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        const rakim = Math.round(data.elevation || 0);
+                        const derece = Math.round(data.current.temperature_2m);
+                        const kod = data.current.weather_code;
+                        
+                        // Basit WMO hava kodu haritalandırması (Türkçe taktik terimler)
+                        let durum = "AÇIK";
+                        if (kod >= 1 && kod <= 3) durum = "AZ BULUTLU";
+                        else if (kod >= 45 && kod <= 48) durum = "SİSLİ";
+                        else if (kod >= 51 && kod <= 67) durum = "YAĞIŞLI";
+                        else if (kod >= 71 && kod <= 77) durum = "KARLI";
+                        else if (kod >= 80 && kod <= 82) durum = "SAĞANAK";
+                        else if (kod >= 95) durum = "GÖK GÜRÜLTÜLÜ";
+
+                        const sonucFormat = `H: ${rakim}m | ${derece}°C ${durum}`;
+                        inputWeather.value = sonucFormat;
+                        viewWeather.textContent = sonucFormat;
+                        weatherBtn.textContent = "🌤️ Çek";
+                    })
+                    .catch(() => {
+                        alert("Hava durumu verisi alınamadı.");
+                        weatherBtn.textContent = "🌤️ Çek";
+                    });
+            }, () => {
+                alert("Konum izni verilmediği için hava durumu alınamadı.");
+                weatherBtn.textContent = "🌤️ Çek";
+            });
+        });
+
+        // FOTOĞRAF YÜKLEME SÜRECİ
+        imageUpload.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.addEventListener('load', function() {
+                    previewImg.setAttribute('src', this.result);
+                    placeholderBox.style.display = 'none';
+                    templateWrapper.style.display = 'inline-block';
+                    downloadBtn.style.display = 'block';
+                });
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // FİLİGRANLI İNDİRME
+        downloadBtn.addEventListener('click', () => {
+            window.scrollTo(0,0);
+            html2canvas(templateWrapper, {
+                useCORS: true,
+                allowTaint: false,
+                scale: window.devicePixelRatio || 2,
+                logging: false,
+                backgroundColor: null,
+                scrollX: 0,
+                scrollY: 0,
+                width: templateWrapper.getBoundingClientRect().width,
+                height: templateWrapper.getBoundingClientRect().height
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'kotaf_faaliyet_gorseli.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+
+    </script>
+
+</body>
+</html>
