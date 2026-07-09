@@ -7,10 +7,8 @@
     
     <title>KOTAF - Konumlu Taktik Fotoğraf Sistemi</title>
     
-    <!-- KÜTÜPHANELER -->
+    <!-- Sadece fotoğraf kaydetmek için gerekli ana kütüphane -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.js"></script>
     
     <style>
         /* --- AÇILIŞ (YÜKLEME) EKRANI STİLLERİ --- */
@@ -281,13 +279,11 @@
 
         .watermark-box * { color: #000000 !important; }
 
-        /* Konumlandırma Sınıfları */
         .top-left { top: 0; left: 0; }
         .top-right { top: 0; right: 0; }
         .bottom-left { bottom: 0; left: 0; }
         .bottom-right { bottom: 0; right: 0; }
 
-        /* Sağ Alt Logo Çerçevesi */
         .watermark-logo-box {
             position: absolute;
             bottom: 6.5vw; 
@@ -338,7 +334,7 @@
 </head>
 <body>
 
-    <!-- AÇILIŞ VE ŞİFRE EKRANI KAPSAYICISI -->
+    <!-- AÇILIŞ VE ŞİFRE EKRANI -->
     <div id="splash-screen">
         <div id="loader-content" style="display: flex; flex-direction: column; align-items: center;">
             <div class="loader-radar"></div>
@@ -353,7 +349,7 @@
         </div>
     </div>
 
-    <!-- SOL PANEL -->
+    <!-- SOL KONTROL PANELİ -->
     <div class="control-panel">
         <h3>KOTAF Kontrol Paneli</h3>
         
@@ -361,7 +357,7 @@
             <label for="input-date">Tarih / Kod (Sol Üst)</label>
             <div class="input-group-row">
                 <input type="text" id="input-date" value="020830C TEM 2026">
-                <button id="time-btn" class="auto-btn" type="button">📍 Çek</button>
+                <button id="time-btn" class="auto-btn" type="button">⏱️ Çek</button>
             </div>
         </div>
 
@@ -373,7 +369,7 @@
         <div class="input-group">
             <label for="input-coord">Koordinat (Sol Alt)</label>
             <div class="input-group-row">
-                <input type="text" id="input-coord" value="38SLG 96681 08362">
+                <input type="text" id="input-coord" value="N: 38.3556° | E: 38.3331°">
                 <button id="gps-btn" class="auto-btn" type="button">📍 Çek</button>
             </div>
         </div>
@@ -382,7 +378,7 @@
             <label for="input-weather">Rakım / Hava Durumu (Sağ Alt)</label>
             <div class="input-group-row">
                 <input type="text" id="input-weather" value="H: 960m | 24°C AÇIK">
-                <button id="weather-btn" class="auto-btn" type="button">🌤️ Çek</button>
+                <button id="weather-btn" class="auto-btn" type="button">✍️ Düzenle</button>
             </div>
         </div>
 
@@ -408,12 +404,11 @@
         <div id="template-wrapper" class="template-container" style="display: none;">
             <div class="watermark-box top-left" id="view-date">020830C TEM 2026</div>
             <div class="watermark-box top-right" id="view-name">SARKE</div>
-            <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
-            
+            <div class="watermark-box bottom-left" id="view-coord">N: 38.3556° | E: 38.3331°</div>
             <div class="watermark-box bottom-right" id="view-weather">H: 960m | 24°C AÇIK</div>
             
             <div class="watermark-logo-box" id="logo-wrapper">
-                <img id="view-logo" src="" alt="Arma" crossOrigin="anonymous">
+                <img id="view-logo" src="" alt="Arma">
             </div>
 
             <img id="preview-img" class="main-image" src="" alt="Önizleme">
@@ -421,8 +416,6 @@
     </div>
 
     <script>
-
-        // --- ŞİFRE, SÜRE VE SABİT LOGO AYARLARI ---
         const DOGRU_SIFRE = "1234"; 
         const SABIT_LOGO_URL = "https://i.hizliresim.com/8q5y1lk.png";
 
@@ -431,7 +424,7 @@
                 document.getElementById('loader-content').style.display = 'none';
                 document.getElementById('login-panel').style.display = 'flex';
                 document.getElementById('password-field').focus(); 
-            }, 3000); 
+            }, 2500); 
             document.getElementById('view-logo').setAttribute('src', SABIT_LOGO_URL);
         });
 
@@ -452,8 +445,7 @@
         loginSubmit.addEventListener('click', sifreKontrolEt);
         passwordField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sifreKontrolEt(); });
 
-
-        // --- ANA UYGULAMA PANELİ ---
+        // --- PANEL BAĞLANTILARI ---
         const inputDate = document.getElementById('input-date');
         const inputName = document.getElementById('input-name');
         const inputCoord = document.getElementById('input-coord');
@@ -480,7 +472,6 @@
         inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
         inputWeather.addEventListener('input', () => { viewWeather.textContent = inputWeather.value; }); 
 
-        // LOGO AÇ / KAPAT BUTONU KONTROLÜ
         let logoAktifMi = false;
         toggleLogoBtn.addEventListener('click', () => {
             logoAktifMi = !logoAktifMi;
@@ -495,108 +486,53 @@
             }
         });
 
-        // OTOMATİK ASKERİ TARİH / SAAT (DTG) ÇEKME FONKSİYONU
+        // ÇEVRİMDIŞI ASKERİ TARİH SİSTEMİ
         timeBtn.addEventListener('click', () => {
             const simdi = new Date();
             const gun = String(simdi.getDate()).padStart(2, '0');
             const saat = String(simdi.getHours()).padStart(2, '0');
             const dakika = String(simdi.getMinutes()).padStart(2, '0');
             const yil = simdi.getFullYear();
-            
             const aylar = ["OCA", "SUB", "MAR", "NIS", "MAY", "HAZ", "TEM", "AGU", "EYL", "EKM", "KAS", "ARA"];
             const ayKisa = aylar[simdi.getMonth()];
-            const zamanHarfi = "C"; 
             
-            const askeriFormat = `${gun}${saat}${dakika}${zamanHarfi} ${ayKisa} ${yil}`;
-            
-            inputDate.value = askeriFormat;
-            viewDate.textContent = askeriFormat;
+            const formatliDTG = `${gun}${saat}${dakika}C ${ayKisa} ${yil}`;
+            inputDate.value = formatliDTG;
+            viewDate.textContent = formatliDTG;
         });
 
-        // GPS -> MGRS Çevirici
+        // SIFIR HATA PAYLI HAM CİHAZ GPS'İ
         gpsBtn.addEventListener('click', () => {
             if (!navigator.geolocation) {
-                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                alert("Cihazınızda GPS donanımı bulunamadı.");
                 return;
             }
             gpsBtn.textContent = "⌛...";
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    try {
-                        let mgrsCoord = mgrs.forward([lng, lat]); 
-                        let zone = mgrsCoord.substring(0, 5); 
-                        let easting = mgrsCoord.substring(5, 10); 
-                        let northing = mgrsCoord.substring(10, 15); 
-                        let formattedMGRS = `${zone} ${easting} ${northing}`;
-                        
-                        inputCoord.value = formattedMGRS;
-                        viewCoord.textContent = formattedMGRS;
-                        gpsBtn.textContent = "📍 Çek";
-                    } catch (error) {
-                        alert("Koordinat dönüşümünde bir hata oluştu.");
-                        gpsBtn.textContent = "📍 Çek";
-                    }
-                },
-                (error) => {
-                    alert("Konum alınamadı. HTTP/HTTPS protokol hatası veya konum izni kapalı.");
+                    const lat = position.coords.latitude.toFixed(4);
+                    const lng = position.coords.longitude.toFixed(4);
+                    const koordinatMetni = `N: ${lat}° | E: ${lng}°`;
+                    
+                    inputCoord.value = koordinatMetni;
+                    viewCoord.textContent = koordinatMetni;
                     gpsBtn.textContent = "📍 Çek";
                 },
-                { enableHighAccuracy: true, timeout: 10000 }
+                (error) => {
+                    alert("Koordinat alınamadı. Lütfen telefon/tarayıcı ayarlarından KONUM İZNİ verdiğinizden emin olun.");
+                    gpsBtn.textContent = "📍 Çek";
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
             );
         });
 
-        // SESSİZ MODLU / HATA VERMEYEN SÜPER KARARLI HAVA DURUMU SİSTEMİ
+        // HAVA DURUMU MANUEL ODAKLAMA
         weatherBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                weatherBtn.textContent = "🌤️ Çek";
-                return;
-            }
-            weatherBtn.textContent = "⌛...";
-            
-            navigator.geolocation.getCurrentPosition((position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                const cacheBuster = new Date().getTime();
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true&cb=${cacheBuster}`;
-                
-                fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error('Bağlantı Hatası');
-                    return response.json();
-                })
-                .then(data => {
-                    const rakim = Math.round(data.elevation || 0);
-                    const derece = Math.round(data.current.temperature_2m);
-                    const kod = data.current.weather_code;
-                    
-                    let durum = "AÇIK";
-                    if (kod >= 1 && kod <= 3) durum = "AZ BULUTLU";
-                    else if (kod >= 45 && kod <= 48) durum = "SİSLİ";
-                    else if (kod >= 51 && kod <= 67) durum = "YAĞIŞLI";
-                    else if (kod >= 71 && kod <= 77) durum = "KARLI";
-                    else if (kod >= 80 && kod <= 82) durum = "SAĞANAK";
-                    else if (kod >= 95) durum = "GÖK GÜRÜLTÜLÜ";
-
-                    const sonucFormat = `H: ${rakim}m | ${derece}°C ${durum}`;
-                    inputWeather.value = sonucFormat;
-                    viewWeather.textContent = sonucFormat;
-                    weatherBtn.textContent = "🌤️ Çek";
-                })
-                .catch((err) => {
-                    // Cihaz kısıtlamalarında veya HTTP durumunda alert fırlatıp kullanıcıyı engelleme, sessizce manuel moda geçir
-                    console.log("Hava durumu çekilemedi, manuel veri aktiftir.");
-                    weatherBtn.textContent = "🌤️ Çek";
-                });
-            }, (error) => {
-                console.log("Konum hatası nedeniyle hava durumuna erişilemedi.");
-                weatherBtn.textContent = "🌤️ Çek";
-            }, { enableHighAccuracy: true, timeout: 6000 });
+            inputWeather.focus();
+            inputWeather.select();
         });
 
-        // FOTOĞRAF YÜKLEME SÜRECİ
+        // FOTOĞRAF SEÇME VE YÜKLEME
         imageUpload.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
@@ -611,28 +547,20 @@
             }
         });
 
-        // FİLİGRANLI İNDİRME
+        // KAYDETME
         downloadBtn.addEventListener('click', () => {
             window.scrollTo(0,0);
             html2canvas(templateWrapper, {
-                useCORS: true,
-                allowTaint: false,
-                scale: window.devicePixelRatio || 2,
+                scale: 2,
                 logging: false,
-                backgroundColor: null,
-                scrollX: 0,
-                scrollY: 0,
-                width: templateWrapper.getBoundingClientRect().width,
-                height: templateWrapper.getBoundingClientRect().height
+                backgroundColor: null
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'kotaf_faaliyet_gorseli.png';
+                link.download = 'kotaf_faaliyet.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
         });
-
     </script>
-
 </body>
 </html>
