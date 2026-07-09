@@ -285,12 +285,12 @@
         .top-left { top: 0; left: 0; }
         .top-right { top: 0; right: 0; }
         .bottom-left { bottom: 0; left: 0; }
-        .bottom-right { bottom: 0; right: 0; } /* Yeni Eklenen Sağ Alt Bilgisi */
+        .bottom-right { bottom: 0; right: 0; }
 
-        /* Sağ Alt Logo Çerçevesi (Bilgilerin Üstüne Binmemesi İçin Yukarı Taşındı) */
+        /* Sağ Alt Logo Çerçevesi (Yazının Üstüne Hizalandı) */
         .watermark-logo-box {
             position: absolute;
-            bottom: 6.5vw; /* Alt yazı bandının yüksekliğine göre yukarı kaydırıldı */
+            bottom: 6.5vw; 
             right: 0;
             z-index: 10;
             pointer-events: none;
@@ -308,7 +308,7 @@
 
         @media (min-width: 768px) {
             .watermark-box { font-size: 20px; padding: 3px 10px; }
-            .watermark-logo-box { bottom: 32px; } /* PC görünümünde sabit yükseklik senkronizasyonu */
+            .watermark-logo-box { bottom: 32px; } 
             .watermark-logo-box img { height: 60px; }
         }
 
@@ -378,7 +378,6 @@
             </div>
         </div>
 
-        <!-- YENİ: RAKIM VE HAVA DURUMU GİRİŞ GRUBU -->
         <div class="input-group">
             <label for="input-weather">Rakım / Hava Durumu (Sağ Alt)</label>
             <div class="input-group-row">
@@ -411,10 +410,8 @@
             <div class="watermark-box top-right" id="view-name">SARKE</div>
             <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
             
-            <!-- YENİ: Sağ Alt Filigran Kutusu -->
             <div class="watermark-box bottom-right" id="view-weather">H: 960m | 24°C AÇIK</div>
             
-            <!-- Logo Alanı (Yazı kutusunun tam üzerinde duracak şekilde ayarlandı) -->
             <div class="watermark-logo-box" id="logo-wrapper">
                 <img id="view-logo" src="" alt="Arma" crossOrigin="anonymous">
             </div>
@@ -460,18 +457,18 @@
         const inputDate = document.getElementById('input-date');
         const inputName = document.getElementById('input-name');
         const inputCoord = document.getElementById('input-coord');
-        const inputWeather = document.getElementById('input-weather'); // Yeni
+        const inputWeather = document.getElementById('input-weather'); 
         const imageUpload = document.getElementById('image-upload');
         const toggleLogoBtn = document.getElementById('toggle-logo-btn');
         const downloadBtn = document.getElementById('download-btn');
         const gpsBtn = document.getElementById('gps-btn');
         const timeBtn = document.getElementById('time-btn');
-        const weatherBtn = document.getElementById('weather-btn'); // Yeni
+        const weatherBtn = document.getElementById('weather-btn'); 
 
         const viewDate = document.getElementById('view-date');
         const viewName = document.getElementById('view-name');
         const viewCoord = document.getElementById('view-coord');
-        const viewWeather = document.getElementById('view-weather'); // Yeni
+        const viewWeather = document.getElementById('view-weather'); 
         const logoWrapper = document.getElementById('logo-wrapper'); 
         
         const placeholderBox = document.getElementById('placeholder-box');
@@ -481,7 +478,7 @@
         inputDate.addEventListener('input', () => { viewDate.textContent = inputDate.value; });
         inputName.addEventListener('input', () => { viewName.textContent = inputName.value; });
         inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
-        inputWeather.addEventListener('input', () => { viewWeather.textContent = inputWeather.value; }); // Yeni
+        inputWeather.addEventListener('input', () => { viewWeather.textContent = inputWeather.value; }); 
 
         // LOGO AÇ / KAPAT BUTONU KONTROLÜ
         let logoAktifMi = false;
@@ -550,7 +547,7 @@
             );
         });
 
-        // YENİ: OTOMATİK RAKIM VE HAVA DURUMU ÇEKME (AÇIK KAYNAK APILER)
+        // GÜNCELLENEN HAVA DURUMU KODU
         weatherBtn.addEventListener('click', () => {
             if (!navigator.geolocation) {
                 alert("Tarayıcınız konum özelliğini desteklemiyor.");
@@ -562,17 +559,18 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                // Open-Meteo API kullanılarak ücretsiz ve anahtarsız veri çekimi
                 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`;
                 
                 fetch(url)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('Ağ hatası');
+                        return response.json();
+                    })
                     .then(data => {
                         const rakim = Math.round(data.elevation || 0);
                         const derece = Math.round(data.current.temperature_2m);
                         const kod = data.current.weather_code;
                         
-                        // Basit WMO hava kodu haritalandırması (Türkçe taktik terimler)
                         let durum = "AÇIK";
                         if (kod >= 1 && kod <= 3) durum = "AZ BULUTLU";
                         else if (kod >= 45 && kod <= 48) durum = "SİSLİ";
@@ -586,14 +584,22 @@
                         viewWeather.textContent = sonucFormat;
                         weatherBtn.textContent = "🌤️ Çek";
                     })
-                    .catch(() => {
-                        alert("Hava durumu verisi alınamadı.");
+                    .catch((err) => {
+                        alert("Hava durumu sunucusuna bağlanılamadı. İnternet bağlantınızı kontrol edin.");
                         weatherBtn.textContent = "🌤️ Çek";
                     });
-            }, () => {
-                alert("Konum izni verilmediği için hava durumu alınamadı.");
+            }, (error) => {
+                let mesaj = "Konum alınamadı.";
+                if (error.code === error.PERMISSION_DENIED) {
+                    mesaj = "Konum izni reddedildi. Lütfen tarayıcı ayarlarından konum izni verin veya projenizi HTTPS bağlantılı bir adreste çalıştırın.";
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    mesaj = "Konum bilgisi şu an kullanılabilir değil (GPS sinyali zayıf veya kapalı olabilir).";
+                } else if (error.code === error.TIMEOUT) {
+                    mesaj = "Konum alma isteği zaman aşımına uğradı.";
+                }
+                alert(mesaj);
                 weatherBtn.textContent = "🌤️ Çek";
-            });
+            }, { enableHighAccuracy: true, timeout: 8000 });
         });
 
         // FOTOĞRAF YÜKLEME SÜRECİ
