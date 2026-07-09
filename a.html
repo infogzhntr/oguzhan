@@ -10,9 +10,9 @@
     <!-- Ekran görüntüsü almak için temel kütüphane -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- %100 OFFLINE GÖMÜLÜ MGRS ENGINE -->
+    <!-- %100 OFFLINE GÖMÜLÜ MGRS ENGINE (Parametre Kayması Düzeltildi) -->
     <script>
-        !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t=t||self).mgrs=e()}(this,function(){"use strict";function t(t){return t*Math.PI/180}var e="ABCDEFGHIJKLMNOPQRSTUVWXYZ";return{forward:function(r,n){var i=r[0],a=r[1],o=Math.floor((i+180)/6)+1;a=>(a>=56&&a<64&&i>=3&&i<12?o=32:a>=72&&a<84&&(i>=0&&i<9?o=31:i>=9&&i<21?o=33:i>=21&&i<33?o=35:i>=33&&i<42&&(o=37)));var u=t(i),s=t(a),c=t(6*o-183),f=6378137,l=.006694379990141317,h=.9996,p=f/Math.sqrt(1-l*Math.sin(s)*Math.sin(s)),v=Math.tan(s)*Math.tan(s),g=l/(1-l)*Math.cos(s)*Math.cos(s),m=Math.cos(s)*(u-c),d=f*(1-l/4-3*l*l/64-5*l*l*l/256)*(s-t(0))-(f*(3*l/8+3*l*l/32+45*l*l*l/1024)*Math.sin(2*s))+(f*(15*l*l/256+45*l*l*l/1024)*Math.sin(4*s))-(f*(35*l*l*l/3072)*Math.sin(6*s)),y=h*p*(m+(1-v+g)*Math.pow(m,3)/6+(5-18*v+v*v+72*g-58*l/(1-l))*Math.pow(m,5)/120)+5e5,w=h*(d+p*Math.tan(s)*(m*m/2+(5-v+9*g+4*g*g)*Math.pow(m,4)/24+(61-58*v+v*v+600*g-330*l/(1-l))*Math.pow(m,6)/720));a<0&&(w+=1e7);var C=function(t){if(t<=-80||t>84)return"X";var e=Math.floor((t+80)/8);return e>=12&&e++,e>=21&&e++,"CDEFGHJKLMNPQRSTUVWXX"[e]}(a),x=Math.floor(y),M=Math.floor(w),k=n||5,E=function(t,e){var r=Math.floor((t-1)/3)%3,n=Math.floor((e-1)/8)%2;return 3*n+r+1}(o,C),S=Math.floor(y/1e5),T=Math.floor(w/1e5)%20,b=function(t,e,r){var n,i="ABCDEFGHJKLMNPQRSTUVWX",a="ABCDEFGHJKLMNPQRSTUV",o="FGHJKLMNPQRSTUVABCDE";switch(t){case 1:n=i;break;case 2:n=a;break;case 3:n=o;break;case 4:n=i;break;case 5:n=a;break;case 6:n=o}var u=n.charAt(e-1),s="ABCDEFGHJKLMNPQRSTUV",c="FGHJKLMNPQRSTUVABCDE";return u+(r%2==1?s:c).charAt(r)}(E,S,T),N=String(x%1e5).padStart(5,"0").substring(0,k),O=String(M%1e5).padStart(5,"0").substring(0,k);return o+C+" "+b+" "+N+" "+O}}});
+        !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t=t||self).mgrs=e()}(this,function(){"use strict";function t(t){return t*Math.PI/180}var e="ABCDEFGHIJKLMNOPQRSTUVWXYZ";return{forward:function(r,n){var i=parseFloat(r[0]),a=parseFloat(r[1]),o=Math.floor((i+180)/6)+1;a=>(a>=56&&a<64&&i>=3&&i<12?o=32:a>=72&&a<84&&(i>=0&&i<9?o=31:i>=9&&i<21?o=33:i>=21&&i<33?o=35:i>=33&&i<42&&(o=37)));var u=t(i),s=t(a),c=t(6*o-183),f=6378137,l=.006694379990141317,h=.9996,p=f/Math.sqrt(1-l*Math.sin(s)*Math.sin(s)),v=Math.tan(s)*Math.tan(s),g=l/(1-l)*Math.cos(s)*Math.cos(s),m=Math.cos(s)*(u-c),d=f*(1-l/4-3*l*l/64-5*l*l*l/256)*(s-t(0))-(f*(3*l/8+3*l*l/32+45*l*l*l/1024)*Math.sin(2*s))+(f*(15*l*l/256+45*l*l*l/1024)*Math.sin(4*s))-(f*(35*l*l*l/3072)*Math.sin(6*s)),y=h*p*(m+(1-v+g)*Math.pow(m,3)/6+(5-18*v+v*v+72*g-58*l/(1-l))*Math.pow(m,5)/120)+5e5,w=h*(d+p*Math.tan(s)*(m*m/2+(5-v+9*g+4*g*g)*Math.pow(m,4)/24+(61-58*v+v*v+600*g-330*l/(1-l))*Math.pow(m,6)/720));a<0&&(w+=1e7);var C=function(t){if(t<=-80||t>84)return"X";var e=Math.floor((t+80)/8);return e>=12&&e++,e>=21&&e++,"CDEFGHJKLMNPQRSTUVWXX"[e]}(a),x=Math.floor(y),M=Math.floor(w),k=n||5,E=function(t,e){var r=Math.floor((t-1)/3)%3,n=Math.floor((e-1)/8)%2;return 3*n+r+1}(o,C),S=Math.floor(y/1e5),T=Math.floor(w/1e5)%20,b=function(t,e,r){var n,i="ABCDEFGHJKLMNPQRSTUVWX",a="ABCDEFGHJKLMNPQRSTUV",o="FGHJKLMNPQRSTUVABCDE";switch(t){case 1:n=i;break;case 2:n=a;break;case 3:n=o;break;case 4:n=i;break;case 5:n=a;break;case 6:n=o}var u=n.charAt(e-1),s="ABCDEFGHJKLMNPQRSTUV",c="FGHJKLMNPQRSTUVABCDE";return u+(r%2==1?s:c).charAt(r)}(E,S,T),N=String(x%1e5).padStart(5,"0").substring(0,k),O=String(M%1e5).padStart(5,"0").substring(0,k);return o+C+" "+b+" "+N+" "+O}}});
     </script>
 
     <style>
@@ -260,10 +260,16 @@
             inputDate.value = formatliDTG; viewDate.textContent = formatliDTG;
         });
 
-        // MGRS DÖNÜŞTÜRÜCÜ ÇEKİRDEK FONKSİYON
+        // MGRS DÖNÜŞTÜRÜCÜ ÇEKİRDEK FONKSİYON (Girdi Kontrolü Eklendi)
         function convertToMGRS(lat, lng) {
             try {
-                let rMGRS = mgrs.forward([lng, lat], 5);
+                let nLat = parseFloat(lat);
+                let nLng = parseFloat(lng);
+                if (isNaN(nLat) || isNaN(nLng)) return "KOORDİNAT GEÇERSİZ";
+                
+                let rMGRS = mgrs.forward([nLng, nLat], 5);
+                if(!rMGRS || rMGRS.includes("NaN")) return "HESAPLAMA HATASI";
+                
                 let z = rMGRS.substring(0, 5); 
                 let e = rMGRS.substring(5, 10); 
                 let n = rMGRS.substring(10, 15); 
@@ -273,18 +279,19 @@
             }
         }
 
-        // TEK SEFERDE KOORDİNAT, MGRS VE HAVA DURUMU BAĞLANTISI
+        // TEK SEFERDE KOORDİNAT, MGRS VE HAVA DURUMU BAĞLANTISI (Güvenli Mod)
         fullGpsBtn.addEventListener('click', () => {
             fullGpsBtn.disabled = true;
             fullGpsBtn.textContent = "⌛ KONUM ALINIYOR...";
 
             if (!navigator.geolocation) {
-                alert("Cihazınızda konum servisi desteklenmiyor.");
+                alert("Cihazınızda konum servisi desteklenmiyor veya engellenmiş.");
                 fullGpsBtn.disabled = false;
                 fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
                 return;
             }
 
+            // Timeout süresi tarayıcıların lokal dosyalarda yavaş kalabilmesi ihtimaline karşı esnetildi
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
@@ -296,7 +303,7 @@
                     viewCoord.textContent = mgrsSonuc;
 
                     // 2. Adım: Aynı Konumla Arka Plandan Rakım/Hava Durumu Çek
-                    fullGpsBtn.textContent = "⌛ HAVA DURUMU VE RAKIM ALINIYOR...";
+                    fullGpsBtn.textContent = "⌛ HAVA DURUMU ALINIYOR...";
                     
                     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`)
                     .then(res => res.json())
@@ -324,11 +331,15 @@
                     });
                 },
                 (error) => {
-                    alert("Konum izni reddedildi veya uydu bağlantısı kurulamadı.");
+                    let hataMesaji = "Konum alınamadı. Lütfen tarayıcı adres çubuğunun yanındaki kilit/bilgi ikonundan konum iznini 'İzin Ver' olarak güncelleyin.";
+                    if(error.code === 1) hataMesaji = "Konum izni reddedildi. Adres çubuğundan konuma izin vermelisiniz.";
+                    if(error.code === 3) hataMesaji = "Konum alma süresi doldu. Tekrar deneyin.";
+                    
+                    alert(hataMesaji);
                     fullGpsBtn.disabled = false;
                     fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
                 },
-                { enableHighAccuracy: true, timeout: 7000 }
+                { enableHighAccuracy: false, timeout: 12000, maximumAge: 0 }
             );
         });
 
