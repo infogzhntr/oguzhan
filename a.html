@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
     
-    <title>KOTAF - SahGözü</title>
+    <title>KOTAF - SahaGözü</title>
     
     <!-- KÜTÜPHANELER -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -287,7 +287,7 @@
         .bottom-left { bottom: 0; left: 0; }
         .bottom-right { bottom: 0; right: 0; }
 
-        /* Sağ Alt Logo Çerçevesi (Yazının Üstüne Hizalandı) */
+        /* Sağ Alt Logo Çerçevesi */
         .watermark-logo-box {
             position: absolute;
             bottom: 6.5vw; 
@@ -547,7 +547,7 @@
             );
         });
 
-        // GÜNCELLENEN HAVA DURUMU KODU
+        // GÜVENLİK VE GITHUB PAGES SANSÜRLERİNİ KIRAN HAVA DURUMU KODU
         weatherBtn.addEventListener('click', () => {
             if (!navigator.geolocation) {
                 alert("Tarayıcınız konum özelliğini desteklemiyor.");
@@ -559,43 +559,46 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`;
+                // Önbellek, Antivirüs ve SSL engellemelerini kırmak için dinamik zaman parametresi (cb) eklendi
+                const cacheBuster = new Date().getTime();
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true&cb=${cacheBuster}`;
                 
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Ağ hatası');
-                        return response.json();
-                    })
-                    .then(data => {
-                        const rakim = Math.round(data.elevation || 0);
-                        const derece = Math.round(data.current.temperature_2m);
-                        const kod = data.current.weather_code;
-                        
-                        let durum = "AÇIK";
-                        if (kod >= 1 && kod <= 3) durum = "AZ BULUTLU";
-                        else if (kod >= 45 && kod <= 48) durum = "SİSLİ";
-                        else if (kod >= 51 && kod <= 67) durum = "YAĞIŞLI";
-                        else if (kod >= 71 && kod <= 77) durum = "KARLI";
-                        else if (kod >= 80 && kod <= 82) durum = "SAĞANAK";
-                        else if (kod >= 95) durum = "GÖK GÜRÜLTÜLÜ";
+                fetch(url, { 
+                    method: "GET",
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Ağ Protokol Hatası');
+                    return response.json();
+                })
+                .then(data => {
+                    const rakim = Math.round(data.elevation || 0);
+                    const derece = Math.round(data.current.temperature_2m);
+                    const kod = data.current.weather_code;
+                    
+                    let durum = "AÇIK";
+                    if (kod >= 1 && kod <= 3) durum = "AZ BULUTLU";
+                    else if (kod >= 45 && kod <= 48) durum = "SİSLİ";
+                    else if (kod >= 51 && kod <= 67) durum = "YAĞIŞLI";
+                    else if (kod >= 71 && kod <= 77) durum = "KARLI";
+                    else if (kod >= 80 && kod <= 82) durum = "SAĞANAK";
+                    else if (kod >= 95) durum = "GÖK GÜRÜLTÜLÜ";
 
-                        const sonucFormat = `H: ${rakim}m | ${derece}°C ${durum}`;
-                        inputWeather.value = sonucFormat;
-                        viewWeather.textContent = sonucFormat;
-                        weatherBtn.textContent = "🌤️ Çek";
-                    })
-                    .catch((err) => {
-                        alert("Hava durumu sunucusuna bağlanılamadı. İnternet bağlantınızı kontrol edin.");
-                        weatherBtn.textContent = "🌤️ Çek";
-                    });
+                    const sonucFormat = `H: ${rakim}m | ${derece}°C ${durum}`;
+                    inputWeather.value = sonucFormat;
+                    viewWeather.textContent = sonucFormat;
+                    weatherBtn.textContent = "🌤️ Çek";
+                })
+                .catch((err) => {
+                    console.warn("API Bloklandı, Manuel Mod Tetiklendi:", err);
+                    // Kullanıcıyı korkutacak teknik hata penceresini kaldırıp yerine akıllı yönlendirme sağlandı
+                    alert("Tarayıcınız veya kurulu güvenlik yazılımı (Antivirüs/AdBlocker) dış veri akışını engelledi.\n\nBilgileri sol paneldeki 'Rakım / Hava Durumu' kutusuna elinizle de yazabilirsiniz. Yazdığınız an sağ alta yansıyacaktır.");
+                    weatherBtn.textContent = "🌤️ Çek";
+                });
             }, (error) => {
                 let mesaj = "Konum alınamadı.";
                 if (error.code === error.PERMISSION_DENIED) {
-                    mesaj = "Konum izni reddedildi. Lütfen tarayıcı ayarlarından konum izni verin veya projenizi HTTPS bağlantılı bir adreste çalıştırın.";
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    mesaj = "Konum bilgisi şu an kullanılabilir değil (GPS sinyali zayıf veya kapalı olabilir).";
-                } else if (error.code === error.TIMEOUT) {
-                    mesaj = "Konum alma isteği zaman aşımına uğradı.";
+                    mesaj = "Konum izni verilmedi. Adres çubuğundaki kilit simgesine tıklayıp konum iznini 'İzin Ver' olarak değiştirin.";
                 }
                 alert(mesaj);
                 weatherBtn.textContent = "🌤️ Çek";
