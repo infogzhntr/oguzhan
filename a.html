@@ -5,14 +5,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
     
-    <title>KOTAF asdasdas</title>
+    <title>KOTAFv3</title>
     
     <!-- Ekran görüntüsü almak için temel kütüphane -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- DÜNYA STANDARDI GÜVENLİ MGRS ENGINE -->
+    <!-- DÜZELTİLMİŞ MGRS ENGINE (standart Chuck Taylor / proj4js algoritmasına dayalı) -->
     <script>
-        !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t=t||self).mgrs=e()}(this,function(){"use strict";function t(t){return t*Math.PI/180}var e="ABCDEFGHIJKLMNOPQRSTUVWXYZ";return{forward:function(r,n){var i=parseFloat(r[0]),a=parseFloat(r[1]),o=Math.floor((i+180)/6)+1;a=>(a>=56&&a<64&&i>=3&&i<12?o=32:a>=72&&a<84&&(i>=0&&i<9?o=31:i>=9&&i<21?o=33:i>=21&&i<33?o=35:i>=33&&i<42&&(o=37)));var u=t(i),s=t(a),c=t(6*o-183),f=6378137,l=.006694379990141317,h=.9996,p=f/Math.sqrt(1-l*Math.sin(s)*Math.sin(s)),v=Math.tan(s)*Math.tan(s),g=l/(1-l)*Math.cos(s)*Math.cos(s),m=Math.cos(s)*(u-c),d=f*(1-l/4-3*l*l/64-5*l*l*l/256)*(s-t(0))-(f*(3*l/8+3*l*l/32+45*l*l*l/1024)*Math.sin(2*s))+(f*(15*l*l/256+45*l*l*l/1024)*Math.sin(4*s))-(f*(35*l*l*l/3072)*Math.sin(6*s)),y=h*p*(m+(1-v+g)*Math.pow(m,3)/6+(5-18*v+v*v+72*g-58*l/(1-l))*Math.pow(m,5)/120)+5e5,w=h*(d+p*Math.tan(s)*(m*m/2+(5-v+9*g+4*g*g)*Math.pow(m,4)/24+(61-58*v+v*v+600*g-330*l/(1-l))*Math.pow(m,6)/720));a<0&&(w+=1e7);var C=function(t){if(t<=-80||t>84)return"X";var e=Math.floor((t+80)/8);return e>=12&&e++,e>=21&&e++,"CDEFGHJKLMNPQRSTUVWXX"[e]}(a),x=Math.floor(y),M=Math.floor(w),k=n||5,E=function(t,e){var r=Math.floor((t-1)/3)%3,n=Math.floor((e-1)/8)%2;return 3*n+r+1}(o,C),S=Math.floor(y/1e5),T=Math.floor(w/1e5)%20,b=function(t,e,r){var n,i="ABCDEFGHJKLMNPQRSTUVWX",a="ABCDEFGHJKLMNPQRSTUV",o="FGHJKLMNPQRSTUVABCDE";switch(t){case 1:n=i;break;case 2:n=a;break;case 3:n=o;break;case 4:n=i;break;case 5:n=a;break;case 6:n=o}var u=n.charAt(e-1),s="ABCDEFGHJKLMNPQRSTUV",c="FGHJKLMNPQRSTUVABCDE";return u+(r%2==1?s:c).charAt(r)}(E,S,T),N=String(x%1e5).padStart(5,"0").substring(0,k),O=String(M%1e5).padStart(5,"0").substring(0,k);return o+C+" "+b+" "+N+" "+O}}});
+    var mgrs = (function() {
+        "use strict";
+        function d2r(d) { return d * Math.PI / 180; }
+
+        var A=65,I=73,O=79,V=86,Z=90;
+        var NUM_100K_SETS = 6;
+        var SET_ORIGIN_COLUMN_LETTERS = 'AJSAJS';
+        var SET_ORIGIN_ROW_LETTERS = 'AFAFAF';
+
+        function get100kSetForZone(zoneNumber) {
+            var setParm = zoneNumber % NUM_100K_SETS;
+            if (setParm === 0) setParm = NUM_100K_SETS;
+            return setParm;
+        }
+
+        // ESKİ HATALI KOD burada enlem bandı HARFİNİ (örn "S") sayı gibi kullanıp
+        // NaN üretiyor ve undefined.charAt() ile çöküyordu. Doğru yöntem: sadece
+        // zone numarasına göre 1-6 arası "set" belirlemek (get100kSetForZone).
+        function getLetter100kID(column, row, parm) {
+            var index = parm - 1;
+            var colOrigin = SET_ORIGIN_COLUMN_LETTERS.charCodeAt(index);
+            var rowOrigin = SET_ORIGIN_ROW_LETTERS.charCodeAt(index);
+            var colInt = colOrigin + column - 1;
+            var rowInt = rowOrigin + row;
+            var rollover = false;
+
+            if (colInt > Z) { colInt = colInt - Z + A - 1; rollover = true; }
+            if (colInt === I || (colOrigin < I && colInt > I) || ((colInt > I || colOrigin < I) && rollover)) colInt++;
+            if (colInt === O || (colOrigin < O && colInt > O) || ((colInt > O || colOrigin < O) && rollover)) {
+                colInt++;
+                if (colInt === I) colInt++;
+            }
+            if (colInt > Z) colInt = colInt - Z + A - 1;
+
+            if (rowInt > V) { rowInt = rowInt - V + A - 1; rollover = true; } else rollover = false;
+            if (rowInt === I || (rowOrigin < I && rowInt > I) || ((rowInt > I || rowOrigin < I) && rollover)) rowInt++;
+            if (rowInt === O || (rowOrigin < O && rowInt > O) || ((rowInt > O || rowOrigin < O) && rollover)) {
+                rowInt++;
+                if (rowInt === I) rowInt++;
+            }
+            if (rowInt > V) rowInt = rowInt - V + A - 1;
+
+            return String.fromCharCode(colInt) + String.fromCharCode(rowInt);
+        }
+
+        function getLatitudeBand(lat) {
+            if (lat <= -80 || lat > 84) return "X";
+            var bands = "CDEFGHJKLMNPQRSTUVWXX";
+            var idx = Math.floor((lat + 80) / 8);
+            if (idx > 20) idx = 20;
+            return bands[idx];
+        }
+
+        function getZoneNumber(lat, lon) {
+            var zone = Math.floor((lon + 180) / 6) + 1;
+            if (lat >= 56 && lat < 64 && lon >= 3 && lon < 12) zone = 32;
+            if (lat >= 72 && lat < 84) {
+                if (lon >= 0 && lon < 9) zone = 31;
+                else if (lon >= 9 && lon < 21) zone = 33;
+                else if (lon >= 21 && lon < 33) zone = 35;
+                else if (lon >= 33 && lon < 42) zone = 37;
+            }
+            return zone;
+        }
+
+        return {
+            forward: function(lonLat, accuracy) {
+                var lon = parseFloat(lonLat[0]);
+                var lat = parseFloat(lonLat[1]);
+                var zone = getZoneNumber(lat, lon);
+
+                var lonRad = d2r(lon), latRad = d2r(lat);
+                var centralMeridian = d2r(6 * zone - 183);
+                var a = 6378137, ecc = 0.006694379990141317, k0 = 0.9996;
+
+                var N = a / Math.sqrt(1 - ecc * Math.sin(latRad) * Math.sin(latRad));
+                var T = Math.tan(latRad) * Math.tan(latRad);
+                var C = ecc / (1 - ecc) * Math.cos(latRad) * Math.cos(latRad);
+                var Am = Math.cos(latRad) * (lonRad - centralMeridian);
+
+                var M = a * ((1 - ecc/4 - 3*ecc*ecc/64 - 5*ecc*ecc*ecc/256) * latRad
+                    - (3*ecc/8 + 3*ecc*ecc/32 + 45*ecc*ecc*ecc/1024) * Math.sin(2*latRad)
+                    + (15*ecc*ecc/256 + 45*ecc*ecc*ecc/1024) * Math.sin(4*latRad)
+                    - (35*ecc*ecc*ecc/3072) * Math.sin(6*latRad));
+
+                var easting = k0*N*(Am + (1-T+C)*Math.pow(Am,3)/6
+                    + (5-18*T+T*T+72*C-58*ecc/(1-ecc))*Math.pow(Am,5)/120) + 500000;
+                var northing = k0*(M + N*Math.tan(latRad)*(Am*Am/2
+                    + (5-T+9*C+4*C*C)*Math.pow(Am,4)/24
+                    + (61-58*T+T*T+600*C-330*ecc/(1-ecc))*Math.pow(Am,6)/720));
+                if (lat < 0) northing += 10000000;
+
+                var band = getLatitudeBand(lat);
+                var set = get100kSetForZone(zone);
+                var col = Math.floor(easting / 100000);
+                var row = Math.floor(northing / 100000) % 20;
+                var square = getLetter100kID(col, row, set);
+
+                var acc = accuracy || 5;
+                var eStr = String(Math.floor(easting) % 100000).padStart(5, "0").substring(0, acc);
+                var nStr = String(Math.floor(northing) % 100000).padStart(5, "0").substring(0, acc);
+
+                return zone + band + " " + square + " " + eStr + " " + nStr;
+            }
+        };
+    })();
     </script>
 
     <style>
@@ -264,7 +369,7 @@
         function processCoordinates(lat, lng) {
             // 1. MGRS Hesaplama
             try {
-                const mgrsSonuc = mgrs.forward([parseFloat(lng), parseFloat(lat)], 5);
+                const mgrsSonuc = mgrs.forward([lng, lat], 5);
                 let z = mgrsSonuc.substring(0, 5); 
                 let e = mgrsSonuc.substring(5, 10); 
                 let n = mgrsSonuc.substring(10, 15); 
@@ -274,12 +379,19 @@
             } catch(e) {
                 inputCoord.value = "HESAPLAMA HATASI";
                 viewCoord.textContent = "HESAPLAMA HATASI";
+                console.error("MGRS hesaplama hatasi:", e);
             }
 
             // 2. Hava Durumu API Sorgusu
+            // DÜZELTME: "elevation=true" GEÇERSİZ bir parametreydi ve Open-Meteo
+            // API'sinden 400 hatası döndürüyordu. Rakım (elevation) zaten yanıtın
+            // içinde varsayılan olarak geliyor, ekstra parametreye gerek yok.
             fullGpsBtn.textContent = "⌛ HAVA DURUMU ALINIYOR...";
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`)
-            .then(res => res.json())
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`)
+            .then(res => {
+                if (!res.ok) throw new Error("API yanit hatasi: " + res.status);
+                return res.json();
+            })
             .then(data => {
                 const r = Math.round(data.elevation || 0);
                 const d = Math.round(data.current.temperature_2m);
@@ -294,9 +406,10 @@
                 inputWeather.value = havaSonuc;
                 viewWeather.textContent = havaSonuc;
             })
-            .catch(() => {
+            .catch((err) => {
                 inputWeather.value = "H: N/A | Hava Durumu Alınamadı";
                 viewWeather.textContent = "H: N/A | Hava Durumu Alınamadı";
+                console.error("Hava durumu alinamadi:", err);
             })
             .finally(() => {
                 fullGpsBtn.disabled = false;
