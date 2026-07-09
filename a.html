@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
     
-    <title>KOTAF - KasdasdasdFotoğrafasdasdasdasdasd Sistemi</title>
+    <title>KOTAF - HAVA</title>
     
     <!-- Ekran görüntüsü almak için temel kütüphane -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- %100 OFFLINE GÖMÜLÜ MGRS ENGINE (Parametre Kayması Düzeltildi) -->
+    <!-- DÜNYA STANDARDI GÜVENLİ MGRS ENGINE -->
     <script>
         !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t=t||self).mgrs=e()}(this,function(){"use strict";function t(t){return t*Math.PI/180}var e="ABCDEFGHIJKLMNOPQRSTUVWXYZ";return{forward:function(r,n){var i=parseFloat(r[0]),a=parseFloat(r[1]),o=Math.floor((i+180)/6)+1;a=>(a>=56&&a<64&&i>=3&&i<12?o=32:a>=72&&a<84&&(i>=0&&i<9?o=31:i>=9&&i<21?o=33:i>=21&&i<33?o=35:i>=33&&i<42&&(o=37)));var u=t(i),s=t(a),c=t(6*o-183),f=6378137,l=.006694379990141317,h=.9996,p=f/Math.sqrt(1-l*Math.sin(s)*Math.sin(s)),v=Math.tan(s)*Math.tan(s),g=l/(1-l)*Math.cos(s)*Math.cos(s),m=Math.cos(s)*(u-c),d=f*(1-l/4-3*l*l/64-5*l*l*l/256)*(s-t(0))-(f*(3*l/8+3*l*l/32+45*l*l*l/1024)*Math.sin(2*s))+(f*(15*l*l/256+45*l*l*l/1024)*Math.sin(4*s))-(f*(35*l*l*l/3072)*Math.sin(6*s)),y=h*p*(m+(1-v+g)*Math.pow(m,3)/6+(5-18*v+v*v+72*g-58*l/(1-l))*Math.pow(m,5)/120)+5e5,w=h*(d+p*Math.tan(s)*(m*m/2+(5-v+9*g+4*g*g)*Math.pow(m,4)/24+(61-58*v+v*v+600*g-330*l/(1-l))*Math.pow(m,6)/720));a<0&&(w+=1e7);var C=function(t){if(t<=-80||t>84)return"X";var e=Math.floor((t+80)/8);return e>=12&&e++,e>=21&&e++,"CDEFGHJKLMNPQRSTUVWXX"[e]}(a),x=Math.floor(y),M=Math.floor(w),k=n||5,E=function(t,e){var r=Math.floor((t-1)/3)%3,n=Math.floor((e-1)/8)%2;return 3*n+r+1}(o,C),S=Math.floor(y/1e5),T=Math.floor(w/1e5)%20,b=function(t,e,r){var n,i="ABCDEFGHJKLMNPQRSTUVWX",a="ABCDEFGHJKLMNPQRSTUV",o="FGHJKLMNPQRSTUVABCDE";switch(t){case 1:n=i;break;case 2:n=a;break;case 3:n=o;break;case 4:n=i;break;case 5:n=a;break;case 6:n=o}var u=n.charAt(e-1),s="ABCDEFGHJKLMNPQRSTUV",c="FGHJKLMNPQRSTUVABCDE";return u+(r%2==1?s:c).charAt(r)}(E,S,T),N=String(x%1e5).padStart(5,"0").substring(0,k),O=String(M%1e5).padStart(5,"0").substring(0,k);return o+C+" "+b+" "+N+" "+O}}});
     </script>
@@ -144,17 +144,17 @@
             <input type="text" id="input-name" value="SARKE">
         </div>
 
-        <!-- YENİ ENTEGRE TEK TUŞLU KONUM SİSTEMİ -->
+        <!-- TEK TUŞLU KONUM SİSTEMİ -->
         <button id="full-gps-btn" class="full-gps-btn" type="button">🛰️ KONUMDAN TÜM VERİLERİ ÇEK</button>
 
         <div class="input-group" style="margin-top: 5px;">
             <label>Koordinat (Sol Alt)</label>
-            <input type="text" id="input-coord" value="38SLG 96681 08362">
+            <input type="text" id="input-coord" value="MGRS HATA">
         </div>
 
         <div class="input-group">
             <label>Rakım / Hava Durumu (Sağ Alt)</label>
-            <input type="text" id="input-weather" value="H: 960m | 24°C AÇIK">
+            <input type="text" id="input-weather" value="H: N/A | Hava Durumu Alınamadı">
         </div>
 
         <div class="input-group">
@@ -177,8 +177,8 @@
         <div id="template-wrapper" class="template-container" style="display: none;">
             <div class="watermark-box top-left" id="view-date">020830C TEM 2026</div>
             <div class="watermark-box top-right" id="view-name">SARKE</div>
-            <div class="watermark-box bottom-left" id="view-coord">38SLG 96681 08362</div>
-            <div class="watermark-box bottom-right" id="view-weather">H: 960m | 24°C AÇIK</div>
+            <div class="watermark-box bottom-left" id="view-coord">MGRS HATA</div>
+            <div class="watermark-box bottom-right" id="view-weather">H: N/A | Hava Durumu Alınamadı</div>
             <div class="watermark-logo-box" id="logo-wrapper">
                 <img id="view-logo" src="" alt="Arma">
             </div>
@@ -260,88 +260,99 @@
             inputDate.value = formatliDTG; viewDate.textContent = formatliDTG;
         });
 
-        // MGRS DÖNÜŞTÜRÜCÜ ÇEKİRDEK FONKSİYON (Girdi Kontrolü Eklendi)
-        function convertToMGRS(lat, lng) {
+        // MANUEL VEYA OTOMATİK GELEN KOORDİNATI MGRS & HAVA DURUMUNA ÇEVİREN ANA MOTOR
+        function processCoordinates(lat, lng) {
+            // 1. MGRS Hesaplama
             try {
-                let nLat = parseFloat(lat);
-                let nLng = parseFloat(lng);
-                if (isNaN(nLat) || isNaN(nLng)) return "KOORDİNAT GEÇERSİZ";
-                
-                let rMGRS = mgrs.forward([nLng, nLat], 5);
-                if(!rMGRS || rMGRS.includes("NaN")) return "HESAPLAMA HATASI";
-                
-                let z = rMGRS.substring(0, 5); 
-                let e = rMGRS.substring(5, 10); 
-                let n = rMGRS.substring(10, 15); 
-                return `${z} ${e} ${n}`;
-            } catch(err) {
-                return "MGRS HATA";
+                const mgrsSonuc = mgrs.forward([parseFloat(lng), parseFloat(lat)], 5);
+                let z = mgrsSonuc.substring(0, 5); 
+                let e = mgrsSonuc.substring(5, 10); 
+                let n = mgrsSonuc.substring(10, 15); 
+                const duzgunMgrs = `${z} ${e} ${n}`;
+                inputCoord.value = duzgunMgrs;
+                viewCoord.textContent = duzgunMgrs;
+            } catch(e) {
+                inputCoord.value = "HESAPLAMA HATASI";
+                viewCoord.textContent = "HESAPLAMA HATASI";
             }
+
+            // 2. Hava Durumu API Sorgusu
+            fullGpsBtn.textContent = "⌛ HAVA DURUMU ALINIYOR...";
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`)
+            .then(res => res.json())
+            .then(data => {
+                const r = Math.round(data.elevation || 0);
+                const d = Math.round(data.current.temperature_2m);
+                const c = data.current.weather_code;
+                let st = "AÇIK";
+                if (c >= 1 && c <= 3) st = "AZ BULUTLU";
+                else if (c >= 45 && c <= 48) st = "SİSLİ";
+                else if (c >= 51 && c <= 67) st = "YAĞIŞLI";
+                else if (c >= 71 && c <= 77) st = "KARLI";
+                
+                const havaSonuc = `H: ${r}m | ${d}°C ${st}`;
+                inputWeather.value = havaSonuc;
+                viewWeather.textContent = havaSonuc;
+            })
+            .catch(() => {
+                inputWeather.value = "H: N/A | Hava Durumu Alınamadı";
+                viewWeather.textContent = "H: N/A | Hava Durumu Alınamadı";
+            })
+            .finally(() => {
+                fullGpsBtn.disabled = false;
+                fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
+            });
         }
 
-        // TEK SEFERDE KOORDİNAT, MGRS VE HAVA DURUMU BAĞLANTISI (Güvenli Mod)
+        // BUTON TETİKLEME
         fullGpsBtn.addEventListener('click', () => {
             fullGpsBtn.disabled = true;
             fullGpsBtn.textContent = "⌛ KONUM ALINIYOR...";
 
             if (!navigator.geolocation) {
-                alert("Cihazınızda konum servisi desteklenmiyor veya engellenmiş.");
-                fullGpsBtn.disabled = false;
-                fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
+                handleFallback("Tarayıcınız otomatik konum bulmayı desteklemiyor.");
                 return;
             }
 
-            // Timeout süresi tarayıcıların lokal dosyalarda yavaş kalabilmesi ihtimaline karşı esnetildi
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-
-                    // 1. Adım: MGRS Hesapla ve Ekrana Bas
-                    const mgrsSonuc = convertToMGRS(lat, lng);
-                    inputCoord.value = mgrsSonuc;
-                    viewCoord.textContent = mgrsSonuc;
-
-                    // 2. Adım: Aynı Konumla Arka Plandan Rakım/Hava Durumu Çek
-                    fullGpsBtn.textContent = "⌛ HAVA DURUMU ALINIYOR...";
-                    
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&elevation=true`)
-                    .then(res => res.json())
-                    .then(data => {
-                        const r = Math.round(data.elevation || 0);
-                        const d = Math.round(data.current.temperature_2m);
-                        const c = data.current.weather_code;
-                        let st = "AÇIK";
-                        if (c >= 1 && c <= 3) st = "AZ BULUTLU";
-                        else if (c >= 45 && c <= 48) st = "SİSLİ";
-                        else if (c >= 51 && c <= 67) st = "YAĞIŞLI";
-                        else if (c >= 71 && c <= 77) st = "KARLI";
-                        
-                        const havaSonuc = `H: ${r}m | ${d}°C ${st}`;
-                        inputWeather.value = havaSonuc;
-                        viewWeather.textContent = havaSonuc;
-                    })
-                    .catch(() => {
-                        inputWeather.value = "H: N/A | Hava Durumu Alınamadı";
-                        viewWeather.textContent = "H: N/A | Hava Durumu Alınamadı";
-                    })
-                    .finally(() => {
-                        fullGpsBtn.disabled = false;
-                        fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
-                    });
+                    processCoordinates(lat, lng);
                 },
                 (error) => {
-                    let hataMesaji = "Konum alınamadı. Lütfen tarayıcı adres çubuğunun yanındaki kilit/bilgi ikonundan konum iznini 'İzin Ver' olarak güncelleyin.";
-                    if(error.code === 1) hataMesaji = "Konum izni reddedildi. Adres çubuğundan konuma izin vermelisiniz.";
-                    if(error.code === 3) hataMesaji = "Konum alma süresi doldu. Tekrar deneyin.";
-                    
-                    alert(hataMesaji);
-                    fullGpsBtn.disabled = false;
-                    fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
+                    // Tarayıcı engellendiğinde veya gizli modda hata alındığında devreye giren yedek mekanizma
+                    handleFallback("Tarayıcı konum izni engellenmiş veya Gizli Mod kısıtlaması var.");
                 },
-                { enableHighAccuracy: false, timeout: 12000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
             );
         });
+
+        // GEOLOCATION BAŞARISIZ OLURSA MANUEL PANEL AÇMA SİSTEMİ
+        function handleFallback(sebepMesaji) {
+            const koordinatInput = prompt(`${sebepMesaji}\n\nLütfen bulunduğunuz yerin veya faaliyetin Enlem, Boylam değerlerini aralarında virgül olacak şekilde girin:\n(Örn: 39.9251, 32.8369)`);
+            
+            if (koordinatInput && koordinatInput.includes(",")) {
+                const parts = koordinatInput.split(",");
+                const lat = parseFloat(parts[0].trim());
+                const lng = parseFloat(parts[1].trim());
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    processCoordinates(lat, lng);
+                } else {
+                    alert("Geçersiz koordinat formatı.");
+                    resetGpsButton();
+                }
+            } else {
+                alert("Koordinat girilmedi. İşlem iptal edildi.");
+                resetGpsButton();
+            }
+        }
+
+        function resetGpsButton() {
+            fullGpsBtn.disabled = false;
+            fullGpsBtn.textContent = "🛰️ KONUMDAN TÜM VERİLERİ ÇEK";
+        }
 
         imageUpload.addEventListener('change', function() {
             const file = this.files[0];
