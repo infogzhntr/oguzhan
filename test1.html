@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+
+    <title>SARKE - Veri Otomasyonlu Filigran</title>
+
+    <!-- KÜTÜPHANELER -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        /* --- TEMA DEĞİŞKENLERİ (Koyu/Açık) --- */
+        :root {
+            --bg-main: #1e1e24;
+            --bg-panel: #2a2a35;
+            --bg-input: #1e1e24;
+            --border-c: #3a3a4a;
+            --text-main: #ffffff;
+            --text-muted: #aaa;
+        }
+        body[data-theme="light"] {
+            --bg-main: #eef0f4;
+            --bg-panel: #ffffff;
+            --bg-input: #f4f5f8;
+            --border-c: #d5d8e0;
+            --text-main: #1a1a1f;
+            --text-muted: #555;
+        }
+        body[data-theme="light"] .preview-area { background-color: #ccc; }
+        body[data-theme="light"] .template-container { background-color: #ddd; }
+
+        /* --- ELDİVEN / BÜYÜK DOKUNMA MODU --- */
+        body.glove-mode .auto-btn, body.glove-mode .login-btn, body.glove-mode .download-btn,
+        body.glove-mode .mode-toggle button { padding: 16px !important; font-size: 17px !important; }
+        body.glove-mode .input-group input, body.glove-mode .input-group select { padding: 16px !important; font-size: 17px !important; }
+        body.glove-mode .section-title { font-size: 15px !important; }
+        body.glove-mode .watermark-box { min-height: 28px; }
+
+        .top-bar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: -6px; }
+        .icon-toggle-btn {
+            background: var(--bg-input); border: 1px solid var(--border-c); color: var(--text-main);
+            border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 14px;
+        }
+
+        /* --- QR KOD --- */
+        .qr-box { z-index: 12; padding: 2px; background: #fff !important; border-radius: 4px; }
+        .qr-box img, .qr-box canvas { display: block; width: 64px; height: 64px; }
+
+        /* --- HAZIR FİLİGRAN TEMALARI --- */
+        .preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .preset-btn {
+            flex: 1; min-width: 80px; background: var(--bg-input); border: 1px solid var(--border-c); color: var(--text-main);
+            border-radius: 6px; padding: 8px 6px; font-size: 12px; cursor: pointer; font-weight: 600;
+        }
+        .preset-btn.active { background: #007bff; color: #fff; border-color: #007bff; }
+        .framed-border { border: 10px solid #fff; box-sizing: border-box; }
+
+        /* --- DENETİM GÜNLÜĞÜ / KONTROL SAYFASI TABLO --- */
+        .audit-row { font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border-c); padding: 6px 0; }
+        .audit-row b { color: var(--text-main); }
+
+        /* --- KULLANICI PROFİLİ ROZETİ --- */
+        .active-user-badge {
+            font-size: 11px; color: var(--text-muted); text-align: right; margin-top: -8px;
+        }
+        .minimap-box { z-index: 12; padding: 0; background: transparent !important; border: 2px solid #fff; border-radius: 4px; overflow: hidden; }
+        .minimap-box img { display: block; width: 100px; height: 100px; object-fit: cover; -webkit-user-drag: none; pointer-events: none; }
+        .minimap-marker {
+            position: absolute; width: 10px; height: 10px; background: #ff2222; border: 2px solid #fff;
+            border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 13;
+            box-shadow: 0 0 3px rgba(0,0,0,0.6);
+        }
+
+        /* --- DÖNDÜR / YAKINLAŞTIR KONTROLLERİ --- */
+        .transform-row { display: flex; gap: 8px; }
+        .transform-row .auto-btn { flex: 1; }
+
+        /* --- ONAY / DIŞA-İÇE AKTARMA BUTON GRUBU --- */
+        .btn-row { display: flex; gap: 8px; }
+        .btn-row .auto-btn { flex: 1; }
+
+        /* --- GEÇMİŞ ÖĞESİ EK BUTON --- */
+        .history-item .reuse-btn {
+            background: #007bff; color: #fff; border: none; border-radius: 5px; padding: 6px 8px;
+            font-size: 11px; font-weight: bold; cursor: pointer;
+        }
+
+        /* --- AÇILIŞ (YÜKLEME) EKRANI STİLLERİ --- */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #111116; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+        .loader-radar {
+            width: 70px; height: 70px; border: 3px solid rgba(0, 123, 255, 0.1);
+            border-radius: 50%; border-top-color: #007bff; border-bottom-color: #007bff;
+            animation: spin-radar 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; margin-bottom: 25px;
+        }
+        .loading-text {
+            color: #007bff; font-family: 'Courier New', Courier, monospace; font-size: 16px;
+            font-weight: bold; letter-spacing: 3px; white-space: nowrap; overflow: hidden;
+            border-right: 3px solid #007bff; width: 21ch;
+            animation: typing 1.5s steps(21, end), blink-caret 0.75s step-end infinite;
+        }
+        #login-panel {
+            display: none; flex-direction: column; align-items: center; gap: 15px;
+            background: #2a2a35; padding: 30px; border-radius: 12px; border: 1px solid #3a3a4a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 280px; text-align: center;
+        }
+        #login-panel h4 { margin: 0 0 5px 0; font-family: 'Courier New', Courier, monospace; color: #fff; letter-spacing: 1px; }
+        .password-input {
+            width: 100%; padding: 12px; border: 1px solid #4a4a5a; border-radius: 6px; font-size: 16px;
+            background-color: #1e1e24; color: #fff; outline: none; text-align: center; box-sizing: border-box; letter-spacing: 4px;
+        }
+        .login-btn {
+            width: 100%; background-color: #007bff; color: white; border: none; padding: 12px; font-size: 14px;
+            font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s;
+        }
+        .login-btn:hover { background-color: #0056b3; }
+        .error-message { color: #dc3545; font-size: 13px; font-weight: bold; display: none; }
+        @keyframes spin-radar { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes typing { from { width: 0 } to { width: 21ch } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #007bff; } }
+        .fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* --- ANA UYGULAMA STİLLERİ --- */
+        body {
+            margin: 0; padding: 15px; background-color: var(--bg-main); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; gap: 20px; min-height: 100vh; box-sizing: border-box; color: var(--text-main);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        @media (min-width: 768px) { body { flex-direction: row; padding: 20px; } }
+
+        .control-panel {
+            flex: 1; width: 100%; max-width: 100%; background-color: var(--bg-panel); padding: 20px; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 14px; height: fit-content;
+            border: 1px solid var(--border-c); box-sizing: border-box; max-height: 95vh; overflow-y: auto;
+        }
+        @media (min-width: 768px) { .control-panel { max-width: 340px; } }
+
+        .control-panel h3 { margin-top: 0; color: var(--text-main); border-bottom: 2px solid var(--border-c); padding-bottom: 10px; font-size: 1.1rem; }
+        .section-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #007bff; font-weight: 700;
+            margin: 6px 0 0 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+        }
+        .section-title .chev { transition: transform 0.2s; }
+        .section-title.collapsed .chev { transform: rotate(-90deg); }
+        .section-body { display: flex; flex-direction: column; gap: 10px; }
+        .section-body.hidden { display: none; }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .input-group-row { display: flex; gap: 8px; }
+        .input-group input[type="text"], .input-group select {
+            flex: 1; padding: 10px; border: 1px solid var(--border-c); border-radius: 6px; font-size: 14px;
+            background-color: var(--bg-input); color: var(--text-main); outline: none;
+        }
+        input[type="range"] { width: 100%; accent-color: #007bff; }
+        input[type="color"] { width: 100%; height: 38px; border: 1px solid var(--border-c); border-radius: 6px; background: var(--bg-input); padding: 2px; }
+
+        .auto-btn {
+            background-color: #007bff; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer;
+            font-weight: bold; font-size: 14px; transition: background 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .auto-btn:hover { background-color: #0056b3; }
+        .auto-btn.full { width: 100%; padding: 10px; }
+        .auto-btn.secondary { background-color: #4a4a5a; }
+        .auto-btn.secondary:hover { background-color: #5a5a6a; }
+        .auto-btn.danger { background-color: #6a2a30; }
+        .auto-btn.danger:hover { background-color: #8a343b; }
+
+        .input-group input[type="file"] { padding: 5px 0; color: #ccc; font-size: 14px; }
+
+        .mode-toggle { display: flex; gap: 8px; }
+        .mode-toggle button {
+            flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #4a4a5a; background: #1e1e24; color: #ccc;
+            font-weight: bold; cursor: pointer; font-size: 13px;
+        }
+        .mode-toggle button.active { background: #007bff; color: #fff; border-color: #007bff; }
+
+        .download-btn {
+            background-color: #28a745; color: white; border: none; padding: 12px; font-size: 15px; font-weight: bold;
+            border-radius: 6px; cursor: pointer; transition: background 0.2s; margin-top: 5px; display: none; width: 100%;
+        }
+        .download-btn:hover { background-color: #218838; }
+
+        .preview-area {
+            flex: 2; display: flex; justify-content: center; align-items: center; background-color: #111; border-radius: 12px;
+            padding: 5px; border: 1px solid #3a3a4a; overflow: hidden; width: 100%; box-sizing: border-box; position: relative;
+        }
+        .template-container {
+            position: relative; display: inline-block; max-width: 100%; background-color: #000; overflow: hidden; margin: 0 auto;
+        }
+        .watermark-box {
+            position: absolute; background-color: #ffffff !important; padding: 2px 6px; font-weight: bold; font-size: 4vw;
+            font-family: Arial, Helvetica, sans-serif; color: #000000 !important; text-decoration: none !important; z-index: 10;
+            letter-spacing: 0.3px; white-space: nowrap; line-height: 1.1; touch-action: none; cursor: grab;
+        }
+        .watermark-box:active { cursor: grabbing; }
+        .watermark-box * { color: inherit !important; text-decoration: none !important; }
+        @media (min-width: 768px) { .watermark-box { font-size: 20px; padding: 3px 10px; } }
+        .top-left { top: 0; left: 0; }
+        .top-right { top: 0; right: 0; }
+        .bottom-left { bottom: 0; left: 0; }
+        .bottom-right { bottom: 0; right: 0; }
+        .logo-box { z-index: 11; padding: 0; background: transparent !important; }
+        .logo-box img {
+            display: block; max-height: 12vw; max-width: 30vw;
+            -webkit-user-drag: none; user-select: none; -webkit-user-select: none;
+            pointer-events: none; /* tıklama/sürükleme olayları üstteki .logo-box'a geçsin */
+        }
+        @media (min-width: 768px) { .logo-box img { max-height: 60px; max-width: 140px; } }
+
+        .main-image { max-width: 100%; height: auto; max-height: 65vh; display: block; object-fit: contain; margin: 0; padding: 0; }
+        @media (min-width: 768px) { .main-image { max-height: 80vh; } }
+
+        .no-image-placeholder {
+            padding: 40px 20px; text-align: center; color: #666; font-style: italic; border: 2px dashed #444;
+            border-radius: 8px; width: 100%; box-sizing: border-box;
+        }
+
+        /* Toplu mod küçük resim listesi */
+        .batch-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .batch-thumb { position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 2px solid #4a4a5a; }
+        .batch-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .batch-thumb .rm {
+            position: absolute; top: 0; right: 0; background: #dc3545; color: #fff; font-size: 11px; font-weight: bold;
+            width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .batch-progress { font-size: 12px; color: #aaa; }
+
+        /* Geçmiş / şablon modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500;
+            align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #2a2a35; border-radius: 12px; padding: 20px; max-width: 420px; width: 100%; max-height: 80vh;
+            overflow-y: auto; border: 1px solid #3a3a4a;
+        }
+        .modal-box h4 { margin-top: 0; color: #fff; }
+        .history-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; background: #1e1e24; margin-bottom: 8px;
+        }
+        .history-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+        .history-item .meta { flex: 1; font-size: 12px; color: #ccc; }
+        .close-modal { float: right; background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <!-- AÇILIŞ VE ŞİFRE EKRANI -->
+    <div id="splash-screen">
+        <div id="loader-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="loader-radar"></div>
+            <div class="loading-text">SISTEM HAZIRLANIYOR...</div>
+        </div>
+        <div id="login-panel">
+            <h4>KULLANICI GİRİŞİ</h4>
+            <input type="text" id="username-field" class="password-input" placeholder="İsim / Rütbe" maxlength="24" style="letter-spacing:normal;">
+            <input type="password" id="password-field" class="password-input" placeholder="••••" maxlength="12">
+            <div id="error-msg" class="error-message">ŞİFRE HATALI!</div>
+            <button id="login-submit" class="login-btn">SİSTEME GİRİŞ YAP</button>
+        </div>
+    </div>
+
+    <!-- SOL PANEL -->
+    <div class="control-panel">
+        <div class="top-bar">
+            <button id="lang-toggle" class="icon-toggle-btn" type="button" title="Dil / Language">TR</button>
+            <button id="theme-toggle" class="icon-toggle-btn" type="button" title="Açık/Koyu tema">🌙</button>
+            <button id="glove-toggle" class="icon-toggle-btn" type="button" title="Eldiven / Büyük Dokunma Modu">🧤</button>
+        </div>
+        <div class="active-user-badge" id="active-user-badge"></div>
+        <h3 data-i18n="title">SARKE Filigran</h3>
+
+        <div class="mode-toggle">
+            <button id="mode-single" class="active" type="button" data-i18n="mode_single">Tekli Fotoğraf</button>
+            <button id="mode-batch" type="button" data-i18n="mode_batch">Toplu Fotoğraf</button>
+        </div>
+
+        <!-- METİN ALANLARI -->
+        <div class="section-title" data-target="sec-text"><span data-i18n="sec_text">Metin Alanları</span> <span class="chev">▾</span></div>
+        <div class="section-body" id="sec-text">
+            <div class="input-group">
+                <label for="input-date">Tarih / DTG (Sol Üst)</label>
+                <div class="input-group-row">
+                    <input type="text" id="input-date" value="Saat ve Tarih">
+                    <button id="time-btn" class="auto-btn" type="button" title="Şimdiki zamanı çek">📍 Çek</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="input-name">İsim (Sağ Üst)</label>
+                <input type="text" id="input-name" value="SARKE">
+            </div>
+
+            <div class="input-group">
+                <label for="input-coord">Koordinat (Sol Alt)</label>
+                <div class="input-group-row">
+                    <input type="text" id="input-coord" value="Koordinat">
+                    <button id="gps-btn" class="auto-btn" type="button" title="GPS konumunu MGRS'e çevir">📍 Çek</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="input-heading">Yön / Pusula (opsiyonel ek etiket)</label>
+                <div class="input-group-row">
+                    <input type="text" id="input-heading" value="">
+                    <button id="heading-btn" class="auto-btn" type="button" title="Cihaz pusulasından yön çek">🧭 Çek</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="input-freetext">Serbest Not (Sağ Alt)</label>
+                <div class="input-group-row">
+                    <input type="text" id="input-freetext" value="" placeholder="Örn: Rütbe / Birlik / Açıklama">
+                    <button id="voice-btn" class="auto-btn" type="button" title="Sesle yazdır">🎤</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STİL AYARLARI -->
+        <div class="section-title collapsed" data-target="sec-style"><span data-i18n="sec_style">Filigran Stili</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-style">
+            <div class="input-group">
+                <label for="font-size-range">Yazı Boyutu</label>
+                <input type="range" id="font-size-range" min="10" max="36" value="20">
+            </div>
+            <div class="input-group">
+                <label for="opacity-range">Filigran Opaklığı</label>
+                <input type="range" id="opacity-range" min="30" max="100" value="100">
+            </div>
+            <div class="input-group-row">
+                <div class="input-group" style="flex:1">
+                    <label for="text-color">Yazı Rengi</label>
+                    <input type="color" id="text-color" value="#000000">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label for="bg-color">Zemin Rengi</label>
+                    <input type="color" id="bg-color" value="#ffffff">
+                </div>
+            </div>
+            <button id="reset-positions" class="auto-btn secondary full" type="button">Filigran Konumlarını Sıfırla</button>
+            <span style="font-size:11px;color:#888;">İpucu: Önizlemedeki filigran kutucuklarını parmağınızla sürükleyip istediğiniz yere taşıyabilirsiniz.</span>
+        </div>
+
+        <!-- LOGO / AMBLEM -->
+        <div class="section-title collapsed" data-target="sec-logo"><span data-i18n="sec_logo">Logo / Amblem</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-logo">
+            <div class="input-group">
+                <label for="logo-upload">Logo Yükle (PNG önerilir)</label>
+                <input type="file" id="logo-upload" accept="image/*">
+            </div>
+            <button id="logo-remove" class="auto-btn secondary full" type="button">Logoyu Kaldır</button>
+        </div>
+
+        <!-- HAZIR FİLİGRAN TEMALARI -->
+        <div class="section-title collapsed" data-target="sec-presets"><span data-i18n="sec_presets">Hazır Filigran Temaları</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-presets">
+            <div class="preset-row">
+                <button class="preset-btn active" data-preset="sade" type="button">Sade</button>
+                <button class="preset-btn" data-preset="cerceveli" type="button">Çerçeveli</button>
+                <button class="preset-btn" data-preset="askeri" type="button">Askeri Rozet</button>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted);">
+                <input type="checkbox" id="qr-toggle"> QR Kod Damgası Ekle (tarih/koordinat/isim doğrulama)
+            </label>
+        </div>
+
+        <!-- GÖRÜNTÜ DÜZENLEME (Döndür / Yakınlaştır) -->
+        <div class="section-title collapsed" data-target="sec-transform"><span data-i18n="sec_transform">Görüntü Düzenleme</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-transform">
+            <div class="transform-row">
+                <button id="rotate-btn" class="auto-btn" type="button">↻ Döndür (90°)</button>
+                <button id="zoom-reset-btn" class="auto-btn secondary" type="button">Yakınlaştırmayı Sıfırla</button>
+            </div>
+            <div class="input-group">
+                <label for="zoom-range">Yakınlaştırma / Basit Kırpma</label>
+                <input type="range" id="zoom-range" min="100" max="200" value="100">
+                <span style="font-size:11px;color:var(--text-muted);">Not: Bu, dikdörtgen alan seçmeli tam kırpma değil, görüntüyü ortadan yakınlaştıran basit bir kırpma efektidir.</span>
+            </div>
+            <div class="input-group">
+                <label for="compress-range">Sıkıştırma / Maks. Genişlik (toplu işlemi hızlandırır)</label>
+                <input type="range" id="compress-range" min="800" max="4000" step="200" value="4000">
+                <span id="compress-label" style="font-size:11px;color:var(--text-muted);">Sınırsız (orijinal boyut)</span>
+            </div>
+        </div>
+
+        <!-- KONUM EK BİLGİLER -->
+        <div class="section-title collapsed" data-target="sec-location-extra"><span data-i18n="sec_location_extra">Konum Ek Bilgiler</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-location-extra">
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted);">
+                <input type="checkbox" id="minimap-toggle"> Mini Harita Ekle (GPS/EXIF konumundan)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted);">
+                <input type="checkbox" id="altitude-toggle" checked> Rakım (Yükseklik) Bilgisini Göster
+            </label>
+        </div>
+
+        <!-- ŞABLONLAR -->
+        <div class="section-title collapsed" data-target="sec-templates"><span data-i18n="sec_templates">Kayıtlı Şablonlar</span> <span class="chev">▾</span></div>
+        <div class="section-body hidden" id="sec-templates">
+            <div class="input-group">
+                <select id="template-select"><option value="">-- Şablon Seç --</option></select>
+            </div>
+            <div class="input-group-row">
+                <input type="text" id="template-name" placeholder="Yeni şablon adı">
+                <button id="template-save" class="auto-btn" type="button">Kaydet</button>
+            </div>
+            <button id="template-delete" class="auto-btn danger full" type="button">Seçili Şablonu Sil</button>
+            <div class="btn-row">
+                <button id="data-export-btn" class="auto-btn secondary" type="button">📤 Dışa Aktar (JSON)</button>
+                <button id="data-import-btn" class="auto-btn secondary" type="button">📥 İçe Aktar (JSON)</button>
+            </div>
+            <input type="file" id="data-import-file" accept="application/json" style="display:none;">
+        </div>
+
+        <!-- FOTOĞRAF YÜKLEME (tekli) -->
+        <div class="input-group" id="single-upload-group">
+            <label for="image-upload">Fotoğraf Yükle</label>
+            <input type="file" id="image-upload" accept="image/*">
+        </div>
+
+        <!-- FOTOĞRAF YÜKLEME (toplu) -->
+        <div class="input-group" id="batch-upload-group" style="display:none;">
+            <label for="image-upload-batch">Fotoğrafları Yükle (çoklu seçim)</label>
+            <input type="file" id="image-upload-batch" accept="image/*" multiple>
+            <div class="batch-list" id="batch-list"></div>
+            <div class="batch-progress" id="batch-progress"></div>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted);">
+            <input type="checkbox" id="save-original-toggle"> Kaydederken orijinal fotoğrafı da sakla
+        </label>
+
+        <div class="btn-row">
+            <button id="history-open" class="auto-btn secondary" type="button" data-i18n="btn_history">📁 Geçmiş</button>
+            <button id="audit-open" class="auto-btn secondary" type="button" data-i18n="btn_audit">🧾 Denetim Günlüğü</button>
+        </div>
+
+        <button id="download-btn" class="download-btn" data-i18n="btn_save">Kaydet</button>
+        <button id="print-btn" class="auto-btn full" type="button" style="background-color:#495057; color:#fff; display:none;" data-i18n="btn_print">🖨️ Yazdır</button>
+        <button id="download-zip-btn" class="download-btn" style="background-color:#6f42c1;" data-i18n="btn_zip">Tümünü ZIP Olarak İndir</button>
+        <button id="download-pdf-btn" class="download-btn" style="background-color:#dc6b19; display:none;" data-i18n="btn_pdf">Tümünü PDF Rapor Olarak İndir</button>
+        <button id="contact-sheet-btn" class="download-btn" style="background-color:#17a2b8; display:none;" data-i18n="btn_contact">Kontrol Sayfası (Contact Sheet) Oluştur</button>
+    </div>
+
+    <!-- SAĞ PANEL -->
+    <div class="preview-area">
+        <div id="placeholder-box" class="no-image-placeholder">
+            Lütfen sol panelden bir fotoğraf yükleyin...
+        </div>
+
+        <div id="template-wrapper" class="template-container" style="display: none;">
+            <div class="watermark-box top-left draggable" id="view-date" data-key="date">Saat ve tarih</div>
+            <div class="watermark-box top-right draggable" id="view-name" data-key="name">SARKE</div>
+            <div class="watermark-box bottom-left draggable" id="view-coord" data-key="coord">38SLG 96681 08362</div>
+            <div class="watermark-box bottom-right draggable" id="view-freetext" data-key="freetext" style="display:none;"></div>
+            <div class="watermark-box draggable" id="view-heading" data-key="heading" style="display:none; top:12%; left:0;"></div>
+            <div class="watermark-box logo-box draggable" id="view-logo" data-key="logo" style="display:none; top:0; right:0;">
+                <img id="logo-img" src="" alt="logo" draggable="false">
+            </div>
+            <div class="watermark-box minimap-box draggable" id="view-minimap" data-key="minimap" style="display:none; bottom:0; right:0;">
+                <img id="minimap-img" src="" alt="mini harita" draggable="false">
+                <div id="minimap-marker" class="minimap-marker"></div>
+            </div>
+            <div class="watermark-box qr-box draggable" id="view-qr" data-key="qr" style="display:none; bottom:0; left:50%;">
+                <div id="qr-canvas-holder"></div>
+            </div>
+            <img id="preview-img" class="main-image" src="" alt="Önizleme">
+        </div>
+    </div>
+
+    <!-- GEÇMİŞ MODALI -->
+    <div class="modal-overlay" id="history-modal">
+        <div class="modal-box">
+            <button class="close-modal" data-close="history-modal">×</button>
+            <h4>Geçmiş Kayıtlar</h4>
+            <div id="history-list"></div>
+            <button id="history-clear" class="auto-btn danger full" type="button">Geçmişi Temizle</button>
+        </div>
+    </div>
+
+    <!-- DENETİM GÜNLÜĞÜ MODALI -->
+    <div class="modal-overlay" id="audit-modal">
+        <div class="modal-box">
+            <button class="close-modal" data-close="audit-modal">×</button>
+            <h4>Denetim Günlüğü (Kaydetme Kayıtları)</h4>
+            <div id="audit-list"></div>
+            <div class="btn-row">
+                <button id="audit-export" class="auto-btn secondary" type="button">📤 CSV Dışa Aktar</button>
+                <button id="audit-clear" class="auto-btn danger" type="button">Temizle</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // ŞİFRE VE AÇILIŞ EKRANI
+        // =========================================================
+        const DOGRU_SIFRE = "1234";
+
+        // =========================================================
+        // ÇOKLU KULLANICI PROFİLİ (depolama anahtarları kullanıcı adına göre ayrılır)
+        // =========================================================
+        let activeUserId = 'default';
+        function storageKey(base) {
+            // Denetim günlüğü kasıtlı olarak kullanıcıdan bağımsız (paylaşımlı) tutulur;
+            // hesap verebilirlik için herkesin kayıtları tek günlükte kalmalı.
+            if (base === 'sarke_audit' || base === 'sarke_theme' || base === 'sarke_glove' || base === 'sarke_lang') return base;
+            return activeUserId + '__' + base;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loader-content').style.display = 'none';
+                document.getElementById('login-panel').style.display = 'flex';
+                document.getElementById('password-field').focus();
+            }, 1500);
+            initTemplates();
+            loadStylePrefs();
+        });
+
+        const usernameField = document.getElementById('username-field');
+        const passwordField = document.getElementById('password-field');
+        const loginSubmit = document.getElementById('login-submit');
+        const errorMsg = document.getElementById('error-msg');
+        const splashScreen = document.getElementById('splash-screen');
+
+        function sifreKontrolEt() {
+            if (passwordField.value === DOGRU_SIFRE) {
+                splashScreen.classList.add('fade-out');
+                // Giriş ekranında isim girildiyse, "İsim" filigran alanına otomatik yansıt
+                // ve o kullanıcıya özel şablon/geçmiş/stil profilini etkinleştir.
+                const girilenIsim = usernameField.value.trim();
+                if (girilenIsim) {
+                    inputName.value = girilenIsim;
+                    viewName.textContent = girilenIsim;
+                    activeUserId = girilenIsim.toLowerCase().replace(/[^a-z0-9ğüşıöç]/gi, '_');
+                } else {
+                    activeUserId = 'default';
+                }
+                document.getElementById('active-user-badge').textContent = girilenIsim ? `Profil: ${girilenIsim}` : '';
+                initTemplates();
+                loadStylePrefs();
+                loadPositions();
+                resetInactivityTimer();
+            } else {
+                errorMsg.style.display = 'block';
+                passwordField.value = '';
+            }
+        }
+        loginSubmit.addEventListener('click', sifreKontrolEt);
+        passwordField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sifreKontrolEt(); });
+
+        // =========================================================
+        // OTURUM ZAMAN AŞIMI (hareketsizlikte otomatik kilitlenme)
+        // =========================================================
+        const INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 dakika
+        let inactivityTimer = null;
+
+        function lockApp() {
+            splashScreen.classList.remove('fade-out');
+            document.getElementById('loader-content').style.display = 'none';
+            document.getElementById('login-panel').style.display = 'flex';
+            passwordField.value = '';
+            passwordField.focus();
+        }
+        function resetInactivityTimer() {
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(lockApp, INACTIVITY_LIMIT_MS);
+        }
+        ['click', 'touchstart', 'keydown', 'pointerdown'].forEach(evt => {
+            document.addEventListener(evt, resetInactivityTimer, { passive: true });
+        });
+
+        // =========================================================
+        // ELEMAN REFERANSLARI
+        // =========================================================
+        const inputDate = document.getElementById('input-date');
+        const inputName = document.getElementById('input-name');
+        const inputCoord = document.getElementById('input-coord');
+        const inputHeading = document.getElementById('input-heading');
+        const inputFreetext = document.getElementById('input-freetext');
+
+        const imageUpload = document.getElementById('image-upload');
+        const imageUploadBatch = document.getElementById('image-upload-batch');
+        const downloadBtn = document.getElementById('download-btn');
+        const printBtn = document.getElementById('print-btn');
+        const downloadZipBtn = document.getElementById('download-zip-btn');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const contactSheetBtn = document.getElementById('contact-sheet-btn');
+        const qrToggle = document.getElementById('qr-toggle');
+        const viewQr = document.getElementById('view-qr');
+        const compressRange = document.getElementById('compress-range');
+        const compressLabel = document.getElementById('compress-label');
+        const saveOriginalToggle = document.getElementById('save-original-toggle');
+        const minimapToggle = document.getElementById('minimap-toggle');
+        const altitudeToggle = document.getElementById('altitude-toggle');
+        const viewMinimap = document.getElementById('view-minimap');
+        const minimapImg = document.getElementById('minimap-img');
+        const rotateBtn = document.getElementById('rotate-btn');
+        const zoomRange = document.getElementById('zoom-range');
+        const zoomResetBtn = document.getElementById('zoom-reset-btn');
+        const gpsBtn = document.getElementById('gps-btn');
+        const timeBtn = document.getElementById('time-btn');
+        const headingBtn = document.getElementById('heading-btn');
+
+        const viewDate = document.getElementById('view-date');
+        const viewName = document.getElementById('view-name');
+        const viewCoord = document.getElementById('view-coord');
+        const viewFreetext = document.getElementById('view-freetext');
+        const viewHeading = document.getElementById('view-heading');
+        const viewLogo = document.getElementById('view-logo');
+        const logoImg = document.getElementById('logo-img');
+
+        const placeholderBox = document.getElementById('placeholder-box');
+        const templateWrapper = document.getElementById('template-wrapper');
+        const previewImg = document.getElementById('preview-img');
+
+        // =========================================================
+        // BAĞLANTILI METİN ALANLARI
+        // =========================================================
+        inputDate.addEventListener('input', () => { viewDate.textContent = inputDate.value; });
+        inputName.addEventListener('input', () => { viewName.textContent = inputName.value; });
+        inputCoord.addEventListener('input', () => { viewCoord.textContent = inputCoord.value; });
+        inputFreetext.addEventListener('input', () => {
+            viewFreetext.textContent = inputFreetext.value;
+            viewFreetext.style.display = inputFreetext.value.trim() ? 'block' : 'none';
+        });
+        inputHeading.addEventListener('input', () => {
+            viewHeading.textContent = inputHeading.value;
+            viewHeading.style.display = inputHeading.value.trim() ? 'block' : 'none';
+        });
+
+        // =========================================================
+        // ÇOKLU DİL DESTEĞİ (TR/EN)
+        // Not: Kapsam ana arayüz başlıkları/butonlarıyla sınırlıdır; dinamik
+        // uyarı mesajları (alert/confirm) ve giriş alanı etiketleri şimdilik
+        // yalnızca Türkçe'dir. Tam kapsamlı çeviri için data-i18n etiketleri
+        // diğer elemanlara da eklenebilir.
+        // =========================================================
+        const I18N = {
+            tr: {
+                title: 'SARKE Filigran', mode_single: 'Tekli Fotoğraf', mode_batch: 'Toplu Fotoğraf',
+                sec_text: 'Metin Alanları', sec_style: 'Filigran Stili', sec_logo: 'Logo / Amblem',
+                sec_presets: 'Hazır Filigran Temaları', sec_transform: 'Görüntü Düzenleme',
+                sec_location_extra: 'Konum Ek Bilgiler', sec_templates: 'Kayıtlı Şablonlar',
+                btn_history: '📁 Geçmiş', btn_audit: '🧾 Denetim Günlüğü', btn_save: 'Kaydet',
+                btn_print: '🖨️ Yazdır', btn_zip: 'Tümünü ZIP Olarak İndir',
+                btn_pdf: 'Tümünü PDF Rapor Olarak İndir', btn_contact: 'Kontrol Sayfası (Contact Sheet) Oluştur'
+            },
+            en: {
+                title: 'SARKE Watermark', mode_single: 'Single Photo', mode_batch: 'Batch Photos',
+                sec_text: 'Text Fields', sec_style: 'Watermark Style', sec_logo: 'Logo / Emblem',
+                sec_presets: 'Watermark Presets', sec_transform: 'Image Editing',
+                sec_location_extra: 'Extra Location Info', sec_templates: 'Saved Templates',
+                btn_history: '📁 History', btn_audit: '🧾 Audit Log', btn_save: 'Save',
+                btn_print: '🖨️ Print', btn_zip: 'Download All as ZIP',
+                btn_pdf: 'Download All as PDF Report', btn_contact: 'Generate Contact Sheet'
+            }
+        };
+        const langToggleBtn = document.getElementById('lang-toggle');
+        function applyLanguage(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (I18N[lang] && I18N[lang][key]) el.textContent = I18N[lang][key];
+            });
+            langToggleBtn.textContent = lang.toUpperCase();
+            try { localStorage.setItem('sarke_lang', lang); } catch (e) {}
+        }
+        langToggleBtn.addEventListener('click', () => {
+            const current = langToggleBtn.textContent === 'TR' ? 'en' : 'tr';
+            applyLanguage(current);
+        });
+        (function initLang() {
+            try {
+                const saved = localStorage.getItem('sarke_lang');
+                if (saved) applyLanguage(saved);
+            } catch (e) {}
+        })();
+
+        // =========================================================
+        // TEMA (Açık/Koyu) VE ELDİVEN MODU
+        // =========================================================
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const gloveToggleBtn = document.getElementById('glove-toggle');
+
+        function applyTheme(theme, persist) {
+            document.body.setAttribute('data-theme', theme);
+            themeToggleBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+            if (persist) { try { localStorage.setItem('sarke_theme', theme); } catch (e) {} }
+        }
+        themeToggleBtn.addEventListener('click', () => {
+            const current = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            applyTheme(current, true); // kullanıcı elle seçti: kalıcı olarak kaydet
+        });
+        (function initTheme() {
+            try {
+                const saved = localStorage.getItem('sarke_theme');
+                if (saved) { applyTheme(saved, false); return; }
+            } catch (e) {}
+            // Kullanıcı daha önce elle bir tema seçmediyse, cihazın sistem temasını takip et.
+            if (window.matchMedia) {
+                const mq = window.matchMedia('(prefers-color-scheme: dark)');
+                applyTheme(mq.matches ? 'dark' : 'light', false);
+                mq.addEventListener('change', (e) => {
+                    try { if (localStorage.getItem('sarke_theme')) return; } catch (err) {}
+                    applyTheme(e.matches ? 'dark' : 'light', false);
+                });
+            }
+        })();
+
+        function applyGloveMode(on) {
+            document.body.classList.toggle('glove-mode', on);
+            gloveToggleBtn.style.backgroundColor = on ? '#007bff' : '';
+            try { localStorage.setItem('sarke_glove', on ? '1' : '0'); } catch (e) {}
+        }
+        gloveToggleBtn.addEventListener('click', () => {
+            applyGloveMode(!document.body.classList.contains('glove-mode'));
+        });
+        (function initGlove() {
+            try {
+                if (localStorage.getItem('sarke_glove') === '1') applyGloveMode(true);
+            } catch (e) {}
+        })();
+
+        // =========================================================
+        // AÇILIR / KAPANIR BÖLÜMLER
+        // =========================================================
+        document.querySelectorAll('.section-title').forEach(title => {
+            title.addEventListener('click', () => {
+                const body = document.getElementById(title.dataset.target);
+                title.classList.toggle('collapsed');
+                body.classList.toggle('hidden');
+            });
+        });
+
+        // =========================================================
+        // MOD SEÇİMİ: TEKLİ / TOPLU
+        // =========================================================
+        const modeSingleBtn = document.getElementById('mode-single');
+        const modeBatchBtn = document.getElementById('mode-batch');
+        const singleUploadGroup = document.getElementById('single-upload-group');
+        const batchUploadGroup = document.getElementById('batch-upload-group');
+        let currentMode = 'single';
+
+        modeSingleBtn.addEventListener('click', () => {
+            currentMode = 'single';
+            modeSingleBtn.classList.add('active');
+            modeBatchBtn.classList.remove('active');
+            singleUploadGroup.style.display = 'flex';
+            batchUploadGroup.style.display = 'none';
+            downloadBtn.style.display = previewImg.src ? 'block' : 'none';
+            printBtn.style.display = previewImg.src ? 'block' : 'none';
+            downloadZipBtn.style.display = 'none';
+            downloadPdfBtn.style.display = 'none';
+        });
+        modeBatchBtn.addEventListener('click', () => {
+            currentMode = 'batch';
+            modeBatchBtn.classList.add('active');
+            modeSingleBtn.classList.remove('active');
+            singleUploadGroup.style.display = 'none';
+            batchUploadGroup.style.display = 'flex';
+            downloadBtn.style.display = 'none';
+            printBtn.style.display = 'none';
+            downloadZipBtn.style.display = batchFiles.length ? 'block' : 'none';
+            downloadPdfBtn.style.display = batchFiles.length ? 'block' : 'none';
+            contactSheetBtn.style.display = batchFiles.length ? 'block' : 'none';
+        });
+
+        // =========================================================
+        // DTG (ASKERİ TARİH/SAAT) OTOMATİK ÇEKME
+        // =========================================================
+        // Askeri (NATO) zaman dilimi harfleri, UTC ofsetine (saat cinsinden) göre.
+        // Örn: Türkiye UTC+3 -> "C" (Charlie). Cihaz farklı bir dilimdeyse otomatik uyum sağlar.
+        const ASKERI_ZAMAN_HARFLERI = {
+            0: "Z", 1: "A", 2: "B", 3: "C", 4: "D", 5: "E", 6: "F", 7: "G", 8: "H", 9: "I",
+            10: "K", 11: "L", 12: "M",
+            "-1": "N", "-2": "O", "-3": "P", "-4": "Q", "-5": "R", "-6": "S", "-7": "T",
+            "-8": "U", "-9": "V", "-10": "W", "-11": "X", "-12": "Y"
+        };
+
+        function getAskeriZamanHarfi(date) {
+            // getTimezoneOffset() dakika cinsinden ve UTC'ye göre TERS işaretle döner (örn. UTC+3 için -180).
+            const utcOfsetSaat = Math.round(-date.getTimezoneOffset() / 60);
+            return ASKERI_ZAMAN_HARFLERI[utcOfsetSaat] || "Z";
+        }
+
+        function buildDTG(date) {
+            const gun = String(date.getDate()).padStart(2, '0');
+            const saat = String(date.getHours()).padStart(2, '0');
+            const dakika = String(date.getMinutes()).padStart(2, '0');
+            const yil = date.getFullYear();
+            const aylar = ["OCA", "SUB", "MAR", "NIS", "MAY", "HAZ", "TEM", "AGU", "EYL", "EKM", "KAS", "ARA"];
+            const ayKisa = aylar[date.getMonth()];
+            const zamanHarfi = getAskeriZamanHarfi(date);
+            return `${gun}${saat}${dakika}${zamanHarfi} ${ayKisa} ${yil}`;
+        }
+
+        timeBtn.addEventListener('click', () => {
+            const dtg = buildDTG(new Date());
+            inputDate.value = dtg;
+            viewDate.textContent = dtg;
+            updateQr();
+        });
+
+        // =========================================================
+        // GPS -> MGRS ÇEVİRİCİ
+        // =========================================================
+        function gpsToMgrs(lat, lng) {
+            const mgrsCoord = mgrs.forward([lng, lat]);
+            const zone = mgrsCoord.substring(0, 5);
+            const easting = mgrsCoord.substring(5, 10);
+            const northing = mgrsCoord.substring(10, 15);
+            return `${zone} ${easting} ${northing}`;
+        }
+
+        // Mini harita ve rakım gösterimi için son bilinen koordinatları saklıyoruz.
+        let lastKnownLat = null;
+        let lastKnownLng = null;
+        const minimapMarker = document.getElementById('minimap-marker');
+        const MINIMAP_ZOOM = 15;
+        const MINIMAP_DISPLAY_PX = 100; // .minimap-box img CSS genişlik/yüksekliğiyle aynı olmalı
+
+        // Slippy-map (OSM) tile matematiği: enlem/boylamı tile ve tile-içi kesirli konuma çevirir.
+        function lonLatToTileFloat(lat, lon, zoom) {
+            const latRad = lat * Math.PI / 180;
+            const n = Math.pow(2, zoom);
+            const xFloat = (lon + 180) / 360 * n;
+            const yFloat = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+            return { xFloat, yFloat };
+        }
+
+        // Tile görsellerini base64 olarak önbelleğe alır: hem tekrar ziyaret edilen
+        // bölgelerde internete gerek kalmadan (offline) hızlı yüklenir, hem de
+        // data: URI olduğu için CORS/tainted-canvas riskini tamamen ortadan kaldırır.
+        async function loadTileWithCache(tileUrl) {
+            const cacheKey = 'sarke_tile_cache__' + tileUrl;
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) return cached;
+            } catch (e) {}
+            try {
+                const resp = await fetch(tileUrl);
+                const blob = await resp.blob();
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                try { localStorage.setItem(cacheKey, base64); } catch (e) { /* depolama dolu olabilir, sessiz geç */ }
+                return base64;
+            } catch (e) {
+                return null; // internet yok / servis erişilemedi
+            }
+        }
+
+        function updateMinimap(lat, lng) {
+            if (!minimapToggle.checked) return;
+            try {
+                const { xFloat, yFloat } = lonLatToTileFloat(lat, lng, MINIMAP_ZOOM);
+                const tileX = Math.floor(xFloat);
+                const tileY = Math.floor(yFloat);
+                const tileUrl = `https://tile.openstreetmap.org/${MINIMAP_ZOOM}/${tileX}/${tileY}.png`;
+
+                // İşaretçinin tile içindeki piksel konumu, görsel yüklenmeden önce hesaplanabilir.
+                const scale = MINIMAP_DISPLAY_PX / 256;
+                const markerLeft = (xFloat - tileX) * 256 * scale;
+                const markerTop = (yFloat - tileY) * 256 * scale;
+                minimapMarker.style.left = markerLeft + 'px';
+                minimapMarker.style.top = markerTop + 'px';
+
+                loadTileWithCache(tileUrl).then(base64 => {
+                    if (!base64) { viewMinimap.style.display = 'none'; return; }
+                    minimapImg.setAttribute('src', base64); // data: URI -> asla "kirli" (tainted) canvas riski yok
+                    viewMinimap.style.display = 'block';
+                });
+            } catch (e) {
+                viewMinimap.style.display = 'none';
+            }
+        }
+
+        function updateCoordDisplay(formatted, altitudeMeters) {
+            let text = formatted;
+            if (altitudeToggle.checked) {
+                if (altitudeMeters !== null && altitudeMeters !== undefined && !isNaN(altitudeMeters)) {
+                    text += ` | Rakım: ${Math.round(altitudeMeters)}m`;
+                } else {
+                    // Rakım verisi bu konum/GPS modu ile sağlanamadı (çoğunlukla ağ tabanlı
+                    // konumlamada ya da zayıf GPS sinyalinde olur) — sessizce atlamak yerine
+                    // durumu açıkça belirtiyoruz ki "çalışmıyor" sanılmasın.
+                    text += ` | Rakım: Mevcut Değil`;
+                }
+            }
+            inputCoord.value = formatted; // giriş kutusunda saf koordinat kalır
+            viewCoord.textContent = text; // önizlemede rakım eklenmiş hali gösterilir
+        }
+
+        gpsBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("Tarayıcınız konum özelliğini desteklemiyor.");
+                return;
+            }
+            gpsBtn.textContent = "⌛...";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    try {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        lastKnownLat = lat; lastKnownLng = lng;
+                        const formatted = gpsToMgrs(lat, lng);
+                        updateCoordDisplay(formatted, position.coords.altitude);
+                        updateMinimap(lat, lng);
+                        updateQr();
+                    } catch (error) {
+                        alert("Koordinat dönüşümünde bir hata oluştu.");
+                    }
+                    gpsBtn.textContent = "📍 Çek";
+                },
+                () => {
+                    alert("Konum alınamadı. İzinleri kontrol edin.");
+                    gpsBtn.textContent = "📍 Çek";
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+
+        // Mini harita seçeneği sonradan açılırsa, elde bilgi varsa haritayı hemen oluştur.
+        minimapToggle.addEventListener('change', () => {
+            if (minimapToggle.checked && lastKnownLat !== null) {
+                updateMinimap(lastKnownLat, lastKnownLng);
+            } else if (!minimapToggle.checked) {
+                viewMinimap.style.display = 'none';
+            }
+        });
+        altitudeToggle.addEventListener('change', () => {
+            // Rakım gösterimi değişince koordinat metnini güncel bilgiyle yeniden yaz
+            if (inputCoord.value) {
+                viewCoord.textContent = inputCoord.value; // basitleştirilmiş: yeniden GPS çekilmeden rakım tekrar hesaplanamaz
+            }
+        });
+
+        // =========================================================
+        // PUSULA / YÖN
+        // =========================================================
+        function headingToText(deg) {
+            const yonler = ["K", "KKD", "KD", "DKD", "D", "DGD", "GD", "GGD", "G", "GGB", "GB", "BGB", "B", "BKB", "KB", "KKB"];
+            const idx = Math.round(deg / 22.5) % 16;
+            return `${yonler[idx]} (${Math.round(deg)}°)`;
+        }
+
+        headingBtn.addEventListener('click', () => {
+            headingBtn.textContent = "⌛...";
+            function handler(event) {
+                let heading = event.webkitCompassHeading !== undefined ? event.webkitCompassHeading : (360 - event.alpha);
+                if (heading !== undefined && !isNaN(heading)) {
+                    inputHeading.value = headingToText(heading);
+                    viewHeading.textContent = inputHeading.value;
+                    viewHeading.style.display = 'block';
+                }
+                window.removeEventListener('deviceorientation', handler);
+                headingBtn.textContent = "🧭 Çek";
+            }
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(state => {
+                    if (state === 'granted') {
+                        window.addEventListener('deviceorientation', handler);
+                    } else {
+                        headingBtn.textContent = "🧭 Çek";
+                        alert("Pusula izni verilmedi.");
+                    }
+                }).catch(() => { headingBtn.textContent = "🧭 Çek"; });
+            } else {
+                window.addEventListener('deviceorientation', handler);
+                setTimeout(() => { headingBtn.textContent = "🧭 Çek"; }, 2000);
+            }
+        });
+
+        // =========================================================
+        // EXIF OKUMA (tarih + GPS otomatik doldurma)
+        // =========================================================
+        function dmsToDecimal(dms, ref) {
+            const decimal = dms[0] + dms[1] / 60 + dms[2] / 3600;
+            return (ref === 'S' || ref === 'W') ? -decimal : decimal;
+        }
+
+        function readExifAndFill(imgEl) {
+            try {
+                EXIF.getData(imgEl, function () {
+                    const dateOriginal = EXIF.getTag(this, "DateTimeOriginal");
+                    if (dateOriginal) {
+                        // EXIF format: "2026:07:20 14:35:00"
+                        const parts = dateOriginal.split(" ");
+                        const d = parts[0].split(":");
+                        const t = parts[1] ? parts[1].split(":") : ["00", "00"];
+                        const jsDate = new Date(d[0], d[1] - 1, d[2], t[0], t[1]);
+                        const dtg = buildDTG(jsDate);
+                        inputDate.value = dtg + " (EXIF)";
+                        viewDate.textContent = inputDate.value;
+                        updateQr();
+                    }
+                    const gpsLat = EXIF.getTag(this, "GPSLatitude");
+                    const gpsLatRef = EXIF.getTag(this, "GPSLatitudeRef");
+                    const gpsLng = EXIF.getTag(this, "GPSLongitude");
+                    const gpsLngRef = EXIF.getTag(this, "GPSLongitudeRef");
+                    if (gpsLat && gpsLng) {
+                        const lat = dmsToDecimal(gpsLat, gpsLatRef);
+                        const lng = dmsToDecimal(gpsLng, gpsLngRef);
+                        lastKnownLat = lat; lastKnownLng = lng;
+                        try {
+                            const formatted = gpsToMgrs(lat, lng);
+                            const gpsAltitude = EXIF.getTag(this, "GPSAltitude");
+                            updateCoordDisplay(formatted, gpsAltitude ? gpsAltitude : null);
+                            updateMinimap(lat, lng);
+                            updateQr();
+                        } catch (e) { /* sessiz geç */ }
+                    }
+                });
+            } catch (e) { /* EXIF verisi yoksa sessiz geç */ }
+        }
+
+        // =========================================================
+        // TEKLİ FOTOĞRAF YÜKLEME
+        // =========================================================
+        imageUpload.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.addEventListener('load', async function () {
+                const resized = await resizeImageIfNeeded(this.result);
+                previewImg.setAttribute('src', resized);
+                placeholderBox.style.display = 'none';
+                templateWrapper.style.display = 'inline-block';
+                downloadBtn.style.display = 'block';
+                printBtn.style.display = 'block';
+                // EXIF verisi sıkıştırma sonrası kaybolabileceğinden orijinal (this.result) üzerinden okunuyor.
+                const exifSourceImg = new Image();
+                exifSourceImg.onload = () => readExifAndFill(exifSourceImg);
+                exifSourceImg.src = this.result;
+            });
+            reader.readAsDataURL(file);
+        });
+
+        // =========================================================
+        // TOPLU FOTOĞRAF YÜKLEME
+        // =========================================================
+        let batchFiles = []; // { file, dataUrl }
+        let activeBatchIndex = -1; // önizlemede şu an gösterilen toplu fotoğrafın index'i
+        const batchListEl = document.getElementById('batch-list');
+        const batchProgressEl = document.getElementById('batch-progress');
+
+        imageUploadBatch.addEventListener('change', function () {
+            const files = Array.from(this.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.addEventListener('load', async function () {
+                    const resized = await resizeImageIfNeeded(this.result);
+                    batchFiles.push({ file, dataUrl: resized });
+                    renderBatchList();
+                    if (batchFiles.length === 1) {
+                        // İlk fotoğrafı önizlemeye koy
+                        activeBatchIndex = 0;
+                        previewImg.setAttribute('src', resized);
+                        placeholderBox.style.display = 'none';
+                        templateWrapper.style.display = 'inline-block';
+                    }
+                    downloadZipBtn.style.display = 'block';
+                    downloadPdfBtn.style.display = 'block';
+                    contactSheetBtn.style.display = 'block';
+                });
+                reader.readAsDataURL(file);
+            });
+        });
+
+        function renderBatchList() {
+            batchListEl.innerHTML = '';
+            batchFiles.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'batch-thumb';
+                div.style.cursor = 'pointer';
+                div.style.outline = idx === activeBatchIndex ? '2px solid #007bff' : 'none';
+                div.innerHTML = `<img src="${item.dataUrl}" data-idx="${idx}"><div class="rm" data-idx="${idx}">×</div>`;
+                batchListEl.appendChild(div);
+            });
+            // Küçük resme tıklayınca o fotoğrafı büyük önizlemeye yükle (gözden geçirme / döndürme için)
+            document.querySelectorAll('.batch-thumb img').forEach(img => {
+                img.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx, 10);
+                    activeBatchIndex = idx;
+                    previewImg.setAttribute('src', batchFiles[idx].dataUrl);
+                    renderBatchList();
+                });
+            });
+            document.querySelectorAll('.batch-thumb .rm').forEach(rm => {
+                rm.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx, 10);
+                    batchFiles.splice(idx, 1);
+                    if (activeBatchIndex === idx) activeBatchIndex = -1;
+                    renderBatchList();
+                    if (!batchFiles.length) {
+                        downloadZipBtn.style.display = 'none';
+                        downloadPdfBtn.style.display = 'none';
+                        contactSheetBtn.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        compressRange.addEventListener('input', () => {
+            const v = parseInt(compressRange.value, 10);
+            compressLabel.textContent = v >= 4000 ? 'Sınırsız (orijinal boyut)' : `Maks. ${v}px genişlik`;
+        });
+
+        // Fotoğrafı, ayarlanan maksimum genişliğe göre (varsa) yeniden boyutlandırır.
+        // Toplu işlemleri hızlandırmak ve ZIP/PDF boyutunu küçültmek için kullanılır.
+        function resizeImageIfNeeded(dataUrl) {
+            return new Promise((resolve) => {
+                const maxW = parseInt(compressRange.value, 10);
+                if (maxW >= 4000) { resolve(dataUrl); return; } // "Sınırsız" seçiliyse dokunma
+                const img = new Image();
+                img.onload = () => {
+                    if (img.width <= maxW) { resolve(dataUrl); return; }
+                    const scale = maxW / img.width;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = maxW;
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.87));
+                };
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+
+        // =========================================================
+        // DÖNDÜRME (piksellere gerçekten işlenir) VE YAKINLAŞTIRMA (CSS transform)
+        // =========================================================
+        rotateBtn.addEventListener('click', () => {
+            if (!previewImg.getAttribute('src')) { alert('Önce bir fotoğraf yükleyin.'); return; }
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // 90 derece döndürüldüğü için genişlik/yükseklik yer değiştirir.
+                canvas.width = img.height;
+                canvas.height = img.width;
+                const ctx = canvas.getContext('2d');
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                const rotatedDataUrl = canvas.toDataURL('image/png');
+                previewImg.setAttribute('src', rotatedDataUrl);
+                // Toplu moddaysa, o an önizlenen fotoğrafın kaynağını da güncelle.
+                if (currentMode === 'batch' && activeBatchIndex >= 0 && batchFiles[activeBatchIndex]) {
+                    batchFiles[activeBatchIndex].dataUrl = rotatedDataUrl;
+                    renderBatchList();
+                }
+            };
+            img.src = previewImg.getAttribute('src');
+        });
+
+        zoomRange.addEventListener('input', () => {
+            const scale = parseInt(zoomRange.value, 10) / 100;
+            previewImg.style.transform = `scale(${scale})`;
+            previewImg.style.transformOrigin = 'center center';
+        });
+        zoomResetBtn.addEventListener('click', () => {
+            zoomRange.value = 100;
+            previewImg.style.transform = 'scale(1)';
+        });
+
+        // =========================================================
+        // QR KOD DAMGASI (doğrulama için tarih/koordinat/isim kodlanır)
+        // =========================================================
+        const qrHolder = document.getElementById('qr-canvas-holder');
+        let qrInstance = null;
+
+        function updateQr() {
+            if (!qrToggle.checked) { viewQr.style.display = 'none'; return; }
+            const qrText = `SARKE|${inputName.value}|${inputDate.value}|${inputCoord.value}`;
+            qrHolder.innerHTML = ''; // önceki QR'ı temizle
+            try {
+                qrInstance = new QRCode(qrHolder, {
+                    text: qrText, width: 64, height: 64,
+                    colorDark: "#000000", colorLight: "#ffffff"
+                });
+                viewQr.style.display = 'block';
+            } catch (e) {
+                viewQr.style.display = 'none';
+            }
+        }
+        qrToggle.addEventListener('change', updateQr);
+        // Metin alanları değiştikçe QR içeriği de güncel kalsın.
+        [inputDate, inputName, inputCoord].forEach(el => el.addEventListener('input', updateQr));
+        // =========================================================
+        // YAZDIRMA (native Android köprüsü üzerinden)
+        // =========================================================
+        printBtn.addEventListener('click', async () => {
+            if (!previewImg.getAttribute('src')) { alert('Önce bir fotoğraf yükleyin.'); return; }
+            const canvas = await html2canvas(templateWrapper, {
+                useCORS: true, allowTaint: true, scale: window.devicePixelRatio || 2, logging: false,
+                backgroundColor: null, scrollX: 0, scrollY: 0,
+                width: templateWrapper.getBoundingClientRect().width,
+                height: templateWrapper.getBoundingClientRect().height
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            if (window.AndroidBridge && typeof window.AndroidBridge.printImage === 'function') {
+                window.AndroidBridge.printImage(dataUrl);
+            } else {
+                // Native köprü yoksa (örn. masaüstü tarayıcıda test ederken) basit bir geri dönüş.
+                const w = window.open();
+                if (w) { w.document.write(`<img src="${dataUrl}" style="max-width:100%"><script>window.print()<\/script>`); }
+                else { alert('Yazdırma için Android uygulaması gerekiyor.'); }
+            }
+        });
+
+        // =========================================================
+        // SESLİ GİRİŞ (Serbest Not alanı için)
+        // =========================================================
+        window.receiveVoiceResult = function (text) {
+            // Native Android SpeechRecognizer sonucu bu fonksiyon üzerinden JS'e geri döner.
+            inputFreetext.value = (inputFreetext.value ? inputFreetext.value + ' ' : '') + text;
+            viewFreetext.textContent = inputFreetext.value;
+            viewFreetext.style.display = 'block';
+        };
+        document.getElementById('voice-btn').addEventListener('click', () => {
+            if (window.AndroidBridge && typeof window.AndroidBridge.startVoiceInput === 'function') {
+                window.AndroidBridge.startVoiceInput();
+            } else if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const rec = new SR();
+                rec.lang = 'tr-TR';
+                rec.onresult = (e) => window.receiveVoiceResult(e.results[0][0].transcript);
+                rec.onerror = () => alert('Sesli giriş algılanamadı.');
+                rec.start();
+            } else {
+                alert('Bu cihaz/tarayıcı sesli girişi desteklemiyor.');
+            }
+        });
+
+        // =========================================================
+        // KONTROL SAYFASI (CONTACT SHEET) — toplu fotoğrafların özet ızgarası
+        // =========================================================
+        contactSheetBtn.addEventListener('click', async () => {
+            if (!batchFiles.length) { alert('Önce fotoğraf ekleyin.'); return; }
+            contactSheetBtn.disabled = true;
+            const cols = 4;
+            const cellSize = 220;
+            const padding = 10;
+            const rows = Math.ceil(batchFiles.length / cols);
+            const canvas = document.createElement('canvas');
+            canvas.width = cols * cellSize;
+            canvas.height = rows * (cellSize + 30) + 60;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillText(`SARKE Kontrol Sayfası — ${batchFiles.length} fotoğraf — ${new Date().toLocaleDateString('tr-TR')}`, 10, 30);
+
+            for (let i = 0; i < batchFiles.length; i++) {
+                const img = await new Promise(res => {
+                    const im = new Image();
+                    im.onload = () => res(im);
+                    im.src = batchFiles[i].dataUrl;
+                });
+                const col = i % cols, row = Math.floor(i / cols);
+                const x = col * cellSize + padding;
+                const y = row * (cellSize + 30) + 50;
+                const size = cellSize - padding * 2;
+                const ratio = Math.max(size / img.width, size / img.height);
+                const drawW = img.width * ratio, drawH = img.height * ratio;
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y, size, size);
+                ctx.clip();
+                ctx.drawImage(img, x - (drawW - size) / 2, y - (drawH - size) / 2, drawW, drawH);
+                ctx.restore();
+                ctx.strokeStyle = '#ccc';
+                ctx.strokeRect(x, y, size, size);
+                ctx.fillStyle = '#333';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(`#${i + 1}`, x + 4, y + size + 16);
+            }
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const fileName = 'kontrol_sayfasi_' + Date.now() + '.png';
+            if (window.AndroidBridge && typeof window.AndroidBridge.isNativeApp === 'function' && window.AndroidBridge.isNativeApp()) {
+                window.AndroidBridge.saveImage(dataUrl, fileName);
+            } else {
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = dataUrl;
+                link.click();
+            }
+            contactSheetBtn.disabled = false;
+        });
+
+        // =========================================================
+        // STİL AYARLARI (yazı boyutu, opaklık, renkler)
+        // =========================================================
+        const fontSizeRange = document.getElementById('font-size-range');
+        const opacityRange = document.getElementById('opacity-range');
+        const textColorInput = document.getElementById('text-color');
+        const bgColorInput = document.getElementById('bg-color');
+
+        function applyStyles() {
+            document.querySelectorAll('.watermark-box').forEach(box => {
+                box.style.fontSize = fontSizeRange.value + 'px';
+                box.style.opacity = (parseInt(opacityRange.value, 10) / 100).toString();
+                if (box.id !== 'view-logo') {
+                    // CSS'teki ".watermark-box { color/background-color: ... !important }"
+                    // kuralını geçersiz kılmak için setProperty + 'important' kullanmak gerekiyor;
+                    // normal box.style.color = ... ataması !important karşısında işe yaramaz.
+                    box.style.setProperty('color', textColorInput.value, 'important');
+                    box.style.setProperty('background-color', bgColorInput.value, 'important');
+                }
+            });
+            saveStylePrefs();
+        }
+        [fontSizeRange, opacityRange, textColorInput, bgColorInput].forEach(el => el.addEventListener('input', applyStyles));
+
+        function saveStylePrefs() {
+            try {
+                localStorage.setItem(storageKey('sarke_style'), JSON.stringify({
+                    fontSize: fontSizeRange.value,
+                    opacity: opacityRange.value,
+                    textColor: textColorInput.value,
+                    bgColor: bgColorInput.value
+                }));
+            } catch (e) {}
+        }
+        function loadStylePrefs() {
+            try {
+                const raw = localStorage.getItem(storageKey('sarke_style'));
+                if (raw) {
+                    const s = JSON.parse(raw);
+                    fontSizeRange.value = s.fontSize;
+                    opacityRange.value = s.opacity;
+                    textColorInput.value = s.textColor;
+                    bgColorInput.value = s.bgColor;
+                    applyStyles();
+                }
+            } catch (e) {}
+        }
+
+        // =========================================================
+        // HAZIR FİLİGRAN TEMALARI (Sade / Çerçeveli / Askeri Rozet)
+        // =========================================================
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const preset = btn.dataset.preset;
+                templateWrapper.classList.remove('framed-border');
+                if (preset === 'sade') {
+                    textColorInput.value = '#000000';
+                    bgColorInput.value = '#ffffff';
+                } else if (preset === 'cerceveli') {
+                    textColorInput.value = '#000000';
+                    bgColorInput.value = '#ffffff';
+                    templateWrapper.classList.add('framed-border');
+                } else if (preset === 'askeri') {
+                    textColorInput.value = '#ffffff';
+                    bgColorInput.value = '#3b4a2f'; // haki/zeytin yeşili
+                    templateWrapper.classList.add('framed-border');
+                }
+                applyStyles();
+            });
+        });
+
+        // =========================================================
+        // LOGO YÜKLEME
+        // =========================================================
+        const logoUpload = document.getElementById('logo-upload');
+        const logoRemoveBtn = document.getElementById('logo-remove');
+
+        logoUpload.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.addEventListener('load', function () {
+                logoImg.setAttribute('src', this.result);
+                viewLogo.style.display = 'block';
+            });
+            reader.readAsDataURL(file);
+        });
+        logoRemoveBtn.addEventListener('click', () => {
+            logoImg.setAttribute('src', '');
+            viewLogo.style.display = 'none';
+            logoUpload.value = '';
+        });
+
+        // =========================================================
+        // SÜRÜKLENEBİLİR FİLİGRAN KUTULARI
+        // =========================================================
+        const defaultPositions = {
+            date:      { top: '0%',   left: '0%',   right: 'auto', bottom: 'auto' },
+            name:      { top: '0%',   right: '0%',  left: 'auto',  bottom: 'auto' },
+            coord:     { bottom: '0%',left: '0%',   right: 'auto', top: 'auto' },
+            freetext:  { bottom: '0%',right: '0%',  left: 'auto',  top: 'auto' },
+            heading:   { top: '12%',  left: '0%',   right: 'auto', bottom: 'auto' },
+            logo:      { top: '0%',   right: '0%',  left: 'auto',  bottom: 'auto' },
+            minimap:   { bottom: '0%',right: '0%',  left: 'auto',  top: 'auto' },
+            qr:        { bottom: '0%',left: '50%',  right: 'auto', top: 'auto' }
+        };
+
+        function resetPositions() {
+            document.querySelectorAll('.draggable').forEach(box => {
+                const key = box.dataset.key;
+                const pos = defaultPositions[key];
+                if (pos) Object.assign(box.style, pos);
+            });
+            try { localStorage.removeItem(storageKey('sarke_positions')); } catch (e) {}
+        }
+        document.getElementById('reset-positions').addEventListener('click', resetPositions);
+
+        function loadPositions() {
+            try {
+                const raw = localStorage.getItem(storageKey('sarke_positions'));
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    Object.keys(saved).forEach(key => {
+                        const box = document.querySelector(`.draggable[data-key="${key}"]`);
+                        if (box) Object.assign(box.style, saved[key]);
+                    });
+                }
+            } catch (e) {}
+        }
+        loadPositions();
+
+        function makeDraggable(box) {
+            let dragging = false;
+            let startX, startY, startLeft, startTop;
+
+            // Native tarayıcı sürükle-bırak (özellikle içinde <img> olan logo kutusunda)
+            // devreye girip pointer tabanlı sürüklemeyi bozmasın diye kapatıyoruz.
+            box.addEventListener('dragstart', (e) => e.preventDefault());
+
+            box.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                dragging = true;
+                box.setPointerCapture(e.pointerId);
+                const rect = box.getBoundingClientRect();
+                const containerRect = templateWrapper.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = rect.left - containerRect.left;
+                startTop = rect.top - containerRect.top;
+                // Sürüklerken sağ/alt yerine sol/üst bazlı konumlandırmaya geç
+                box.style.right = 'auto';
+                box.style.bottom = 'auto';
+            });
+
+            box.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const containerRect = templateWrapper.getBoundingClientRect();
+                let newLeft = startLeft + (e.clientX - startX);
+                let newTop = startTop + (e.clientY - startY);
+                newLeft = Math.max(0, Math.min(newLeft, containerRect.width - box.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, containerRect.height - box.offsetHeight));
+                const leftPct = (newLeft / containerRect.width) * 100;
+                const topPct = (newTop / containerRect.height) * 100;
+                box.style.left = leftPct + '%';
+                box.style.top = topPct + '%';
+            });
+
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                savePositions();
+            }
+            box.addEventListener('pointerup', endDrag);
+            box.addEventListener('pointercancel', endDrag);
+        }
+        document.querySelectorAll('.draggable').forEach(makeDraggable);
+
+        function savePositions() {
+            const data = {};
+            document.querySelectorAll('.draggable').forEach(box => {
+                data[box.dataset.key] = {
+                    top: box.style.top || 'auto',
+                    left: box.style.left || 'auto',
+                    right: box.style.right || 'auto',
+                    bottom: box.style.bottom || 'auto'
+                };
+            });
+            try { localStorage.setItem(storageKey('sarke_positions'), JSON.stringify(data)); } catch (e) {}
+        }
+
+        // =========================================================
+        // ŞABLONLAR (isim/koordinat/tarih formatı kayıtlı profil olarak)
+        // =========================================================
+        const templateSelect = document.getElementById('template-select');
+        const templateNameInput = document.getElementById('template-name');
+
+        function getTemplates() {
+            try { return JSON.parse(localStorage.getItem(storageKey('sarke_templates')) || '{}'); }
+            catch (e) { return {}; }
+        }
+        function setTemplates(t) {
+            try { localStorage.setItem(storageKey('sarke_templates'), JSON.stringify(t)); } catch (e) {}
+        }
+        function initTemplates() {
+            const templates = getTemplates();
+            templateSelect.innerHTML = '<option value="">-- Şablon Seç --</option>';
+            Object.keys(templates).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name; opt.textContent = name;
+                templateSelect.appendChild(opt);
+            });
+        }
+        function captureCurrentState() {
+            const positions = {};
+            document.querySelectorAll('.draggable').forEach(box => {
+                positions[box.dataset.key] = {
+                    top: box.style.top || 'auto',
+                    left: box.style.left || 'auto',
+                    right: box.style.right || 'auto',
+                    bottom: box.style.bottom || 'auto'
+                };
+            });
+            return {
+                name: inputName.value,
+                freetext: inputFreetext.value,
+                heading: inputHeading.value,
+                fontSize: fontSizeRange.value,
+                opacity: opacityRange.value,
+                textColor: textColorInput.value,
+                bgColor: bgColorInput.value,
+                // Logo yalnızca base64 (data:) ise şablona dahil edilir; boşsa kaydedilmez.
+                logo: (logoImg.getAttribute('src') || '').startsWith('data:') ? logoImg.getAttribute('src') : '',
+                positions
+            };
+        }
+
+        function applyState(t) {
+            // Metin alanları
+            inputName.value = t.name || '';
+            inputFreetext.value = t.freetext || '';
+            inputHeading.value = t.heading || '';
+            viewName.textContent = inputName.value;
+            viewFreetext.textContent = inputFreetext.value;
+            viewFreetext.style.display = inputFreetext.value.trim() ? 'block' : 'none';
+            viewHeading.textContent = inputHeading.value;
+            viewHeading.style.display = inputHeading.value.trim() ? 'block' : 'none';
+
+            // Stil
+            if (t.fontSize) fontSizeRange.value = t.fontSize;
+            if (t.opacity) opacityRange.value = t.opacity;
+            if (t.textColor) textColorInput.value = t.textColor;
+            if (t.bgColor) bgColorInput.value = t.bgColor;
+            applyStyles();
+
+            // Logo
+            if (t.logo) {
+                logoImg.setAttribute('src', t.logo);
+                viewLogo.style.display = 'block';
+            } else {
+                logoImg.setAttribute('src', '');
+                viewLogo.style.display = 'none';
+            }
+
+            // Konumlar
+            if (t.positions) {
+                Object.keys(t.positions).forEach(key => {
+                    const box = document.querySelector(`.draggable[data-key="${key}"]`);
+                    if (box) Object.assign(box.style, t.positions[key]);
+                });
+            }
+            updateQr();
+        }
+
+        document.getElementById('template-save').addEventListener('click', () => {
+            const name = templateNameInput.value.trim();
+            if (!name) { alert('Lütfen bir şablon adı girin.'); return; }
+            const templates = getTemplates();
+            templates[name] = captureCurrentState();
+            setTemplates(templates);
+            initTemplates();
+            templateSelect.value = name;
+            templateNameInput.value = '';
+        });
+        templateSelect.addEventListener('change', () => {
+            const templates = getTemplates();
+            const t = templates[templateSelect.value];
+            if (t) applyState(t);
+        });
+        document.getElementById('template-delete').addEventListener('click', () => {
+            const name = templateSelect.value;
+            if (!name) return;
+            const templates = getTemplates();
+            delete templates[name];
+            setTemplates(templates);
+            initTemplates();
+        });
+
+        // =========================================================
+        // GEÇMİŞ KAYITLAR (localStorage - son 20 çıktı)
+        // =========================================================
+        const historyModal = document.getElementById('history-modal');
+        const historyList = document.getElementById('history-list');
+
+        document.getElementById('history-open').addEventListener('click', () => {
+            renderHistory();
+            historyModal.classList.add('show');
+        });
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('show'));
+        });
+        document.getElementById('history-clear').addEventListener('click', () => {
+            try { localStorage.removeItem('sarke_history'); } catch (e) {}
+            renderHistory();
+        });
+
+        function getHistory() {
+            try { return JSON.parse(localStorage.getItem(storageKey('sarke_history')) || '[]'); }
+            catch (e) { return []; }
+        }
+        function addToHistory(thumbDataUrl, label) {
+            try {
+                let hist = getHistory();
+                hist.unshift({
+                    thumb: thumbDataUrl,
+                    label,
+                    date: new Date().toLocaleString('tr-TR'),
+                    state: captureCurrentState() // tam profil: stil, logo, konumlar, metinler
+                });
+                hist = hist.slice(0, 20); // son 20 kayıt
+                localStorage.setItem(storageKey('sarke_history'), JSON.stringify(hist));
+            } catch (e) { /* depolama dolu olabilir, sessiz geç */ }
+        }
+        function renderHistory() {
+            const hist = getHistory();
+            historyList.innerHTML = hist.length ? '' : '<p style="color:#888;">Henüz kayıt yok.</p>';
+            hist.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<img src="${item.thumb}"><div class="meta"><b>${item.label}</b><br>${item.date}</div>
+                    <button class="reuse-btn" data-idx="${idx}" type="button">Bu Ayarlarla Devam Et</button>`;
+                historyList.appendChild(div);
+            });
+            document.querySelectorAll('.reuse-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx, 10);
+                    const item = getHistory()[idx];
+                    if (item && item.state) {
+                        applyState(item.state);
+                        historyModal.classList.remove('show');
+                    }
+                });
+            });
+        }
+
+        function makeThumb(canvas, maxSize) {
+            const c = document.createElement('canvas');
+            const scale = Math.min(maxSize / canvas.width, maxSize / canvas.height, 1);
+            c.width = canvas.width * scale;
+            c.height = canvas.height * scale;
+            c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+            return c.toDataURL('image/jpeg', 0.6);
+        }
+
+        // =========================================================
+        // KAYDETME (native Android köprüsü ile ya da tarayıcı indirmesiyle)
+        // =========================================================
+        // =========================================================
+        // DİJİTAL İMZA (SHA-256) VE DENETİM GÜNLÜĞÜ
+        // =========================================================
+        function computeCanvasHash(canvas) {
+            return new Promise((resolve) => {
+                canvas.toBlob(async (blob) => {
+                    try {
+                        const buf = await blob.arrayBuffer();
+                        const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+                        const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                        resolve(hashHex);
+                    } catch (e) {
+                        resolve(null); // Web Crypto desteklenmiyorsa (çok eski WebView) sessizce atla
+                    }
+                }, 'image/png');
+            });
+        }
+        function getAuditLog() {
+            try { return JSON.parse(localStorage.getItem('sarke_audit') || '[]'); } catch (e) { return []; }
+        }
+        function addAuditEntry(entry) {
+            try {
+                let log = getAuditLog();
+                log.unshift(entry);
+                log = log.slice(0, 500); // en fazla 500 kayıt
+                localStorage.setItem('sarke_audit', JSON.stringify(log));
+            } catch (e) {}
+        }
+        function renderAuditLog() {
+            const log = getAuditLog();
+            const auditListEl = document.getElementById('audit-list');
+            auditListEl.innerHTML = log.length ? '' : '<p style="color:#888;">Henüz kayıt yok.</p>';
+            log.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'audit-row';
+                div.innerHTML = `<b>${item.file}</b><br>${item.date} — Kaydeden: ${item.user}<br>SHA-256: ${item.hash ? item.hash.substring(0, 24) + '…' : 'hesaplanamadı'}`;
+                auditListEl.appendChild(div);
+            });
+        }
+        document.getElementById('audit-open').addEventListener('click', () => {
+            renderAuditLog();
+            document.getElementById('audit-modal').classList.add('show');
+        });
+        document.getElementById('audit-clear').addEventListener('click', () => {
+            try { localStorage.removeItem('sarke_audit'); } catch (e) {}
+            renderAuditLog();
+        });
+        document.getElementById('audit-export').addEventListener('click', () => {
+            const log = getAuditLog();
+            let csv = 'Dosya Adı,Tarih,Kaydeden,SHA-256\n';
+            log.forEach(item => {
+                csv += `"${item.file}","${item.date}","${item.user}","${item.hash || ''}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.download = 'sarke_denetim_gunlugu_' + Date.now() + '.csv';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        });
+
+        // Otomatik sıra numarası (örn. SARKE_0007.png); localStorage'da kalıcı sayaç.
+        function getNextCounter() {
+            let n = 1;
+            try { n = parseInt(localStorage.getItem(storageKey('sarke_counter')) || '0', 10) + 1; } catch (e) {}
+            try { localStorage.setItem(storageKey('sarke_counter'), String(n)); } catch (e) {}
+            return String(n).padStart(4, '0');
+        }
+
+        async function saveCanvasAsFile(canvas, fileNamePrefix) {
+            const numaralandirilmisAd = `${fileNamePrefix}_${getNextCounter()}.png`;
+            const dataUrl = canvas.toDataURL('image/png');
+            if (window.AndroidBridge && typeof window.AndroidBridge.isNativeApp === 'function' && window.AndroidBridge.isNativeApp()) {
+                window.AndroidBridge.saveImage(dataUrl, numaralandirilmisAd);
+            } else {
+                const link = document.createElement('a');
+                link.download = numaralandirilmisAd;
+                link.href = dataUrl;
+                link.click();
+            }
+            addToHistory(makeThumb(canvas, 160), numaralandirilmisAd);
+
+            // Dijital imza (SHA-256) hesaplayıp denetim günlüğüne işliyoruz — fotoğrafın
+            // sonradan değiştirilip değiştirilmediğini kanıtlamak için kullanılabilir.
+            const hash = await computeCanvasHash(canvas);
+            addAuditEntry({
+                file: numaralandirilmisAd,
+                date: new Date().toLocaleString('tr-TR'),
+                user: inputName.value || activeUserId,
+                hash
+            });
+
+            // "Orijinali de kaydet" işaretliyse, filigransız orijinal fotoğrafı da ayrıca kaydet.
+            if (saveOriginalToggle.checked && previewImg.getAttribute('src')) {
+                const origName = `${fileNamePrefix}_${numaralandirilmisAd.split('_').pop().replace('.png','')}_orijinal.png`;
+                if (window.AndroidBridge && typeof window.AndroidBridge.isNativeApp === 'function' && window.AndroidBridge.isNativeApp()) {
+                    window.AndroidBridge.saveImage(previewImg.getAttribute('src'), origName);
+                } else {
+                    const link2 = document.createElement('a');
+                    link2.download = origName;
+                    link2.href = previewImg.getAttribute('src');
+                    link2.click();
+                }
+            }
+            return { fileName: numaralandirilmisAd, hash };
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            window.scrollTo(0, 0);
+            html2canvas(templateWrapper, {
+                useCORS: true, allowTaint: true, scale: window.devicePixelRatio || 2, logging: false,
+                backgroundColor: null, scrollX: 0, scrollY: 0,
+                width: templateWrapper.getBoundingClientRect().width,
+                height: templateWrapper.getBoundingClientRect().height
+            }).then(canvas => {
+                saveCanvasAsFile(canvas, 'faaliyet_fotografi');
+            });
+        });
+
+        // =========================================================
+        // TOPLU İNDİRME (ZIP)
+        // =========================================================
+        downloadZipBtn.addEventListener('click', async () => {
+            if (!batchFiles.length) { alert('Önce fotoğraf ekleyin.'); return; }
+            // Toplu işleme başlamadan önce kullanıcıya son bir onay ekranı sun.
+            const onay = confirm(`${batchFiles.length} fotoğraf filigranlanıp ZIP olarak indirilecek. Devam edilsin mi?`);
+            if (!onay) return;
+            const zip = new JSZip();
+            batchProgressEl.textContent = `İşleniyor: 0 / ${batchFiles.length}`;
+            downloadZipBtn.disabled = true;
+
+            for (let i = 0; i < batchFiles.length; i++) {
+                previewImg.setAttribute('src', batchFiles[i].dataUrl);
+                await new Promise(res => { previewImg.onload = res; });
+                // Her fotoğraf için isteğe bağlı EXIF ile tarih/koordinat güncellemesi
+                readExifAndFill(previewImg);
+                await new Promise(res => setTimeout(res, 150)); // EXIF/DOM güncellensin diye kısa bekleme
+
+                const canvas = await html2canvas(templateWrapper, {
+                    useCORS: true, allowTaint: true, scale: window.devicePixelRatio || 2, logging: false,
+                    backgroundColor: null, scrollX: 0, scrollY: 0,
+                    width: templateWrapper.getBoundingClientRect().width,
+                    height: templateWrapper.getBoundingClientRect().height
+                });
+                const dataUrl = canvas.toDataURL('image/png');
+                zip.file(`faaliyet_${i + 1}.png`, dataUrl.split(',')[1], { base64: true });
+                batchProgressEl.textContent = `İşleniyor: ${i + 1} / ${batchFiles.length}`;
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const reader = new FileReader();
+            reader.onload = function () {
+                if (window.AndroidBridge && typeof window.AndroidBridge.isNativeApp === 'function' && window.AndroidBridge.isNativeApp()) {
+                    window.AndroidBridge.saveZip(this.result, 'faaliyet_fotograflari_' + Date.now() + '.zip');
+                } else {
+                    const link = document.createElement('a');
+                    link.download = 'faaliyet_fotograflari_' + Date.now() + '.zip';
+                    link.href = URL.createObjectURL(zipBlob);
+                    link.click();
+                }
+            };
+            reader.readAsDataURL(zipBlob);
+
+            batchProgressEl.textContent = `Tamamlandı: ${batchFiles.length} fotoğraf`;
+            downloadZipBtn.disabled = false;
+        });
+
+        // =========================================================
+        // PDF RAPOR ÇIKTISI (toplu mod - başlık sayfası + tüm görseller)
+        // =========================================================
+        downloadPdfBtn.addEventListener('click', async () => {
+            if (!batchFiles.length) { alert('Önce fotoğraf ekleyin.'); return; }
+            const onay = confirm(`${batchFiles.length} fotoğraf içeren bir PDF rapor oluşturulacak. Devam edilsin mi?`);
+            if (!onay) return;
+
+            downloadPdfBtn.disabled = true;
+            batchProgressEl.textContent = `PDF hazırlanıyor: 0 / ${batchFiles.length}`;
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            // Başlık sayfası
+            pdf.setFontSize(18);
+            pdf.text('SARKE Faaliyet Fotoğrafları Raporu', 15, 20);
+            pdf.setFontSize(11);
+            pdf.text(`Oluşturulma Tarihi: ${new Date().toLocaleString('tr-TR')}`, 15, 30);
+            pdf.text(`Toplam Fotoğraf: ${batchFiles.length}`, 15, 37);
+            pdf.text(`Kaydeden: ${inputName.value || '-'}`, 15, 44);
+
+            for (let i = 0; i < batchFiles.length; i++) {
+                previewImg.setAttribute('src', batchFiles[i].dataUrl);
+                await new Promise(res => { previewImg.onload = res; });
+                readExifAndFill(previewImg);
+                await new Promise(res => setTimeout(res, 150));
+
+                const canvas = await html2canvas(templateWrapper, {
+                    useCORS: true, allowTaint: true, scale: window.devicePixelRatio || 2, logging: false,
+                    backgroundColor: null, scrollX: 0, scrollY: 0,
+                    width: templateWrapper.getBoundingClientRect().width,
+                    height: templateWrapper.getBoundingClientRect().height
+                });
+                const imgData = canvas.toDataURL('image/jpeg', 0.85);
+
+                pdf.addPage();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgRatio = canvas.width / canvas.height;
+                let drawWidth = pageWidth - 20;
+                let drawHeight = drawWidth / imgRatio;
+                if (drawHeight > pageHeight - 30) {
+                    drawHeight = pageHeight - 30;
+                    drawWidth = drawHeight * imgRatio;
+                }
+                const x = (pageWidth - drawWidth) / 2;
+                pdf.setFontSize(10);
+                pdf.text(`Fotoğraf ${i + 1} / ${batchFiles.length}`, 15, 12);
+                pdf.addImage(imgData, 'JPEG', x, 18, drawWidth, drawHeight);
+
+                batchProgressEl.textContent = `PDF hazırlanıyor: ${i + 1} / ${batchFiles.length}`;
+            }
+
+            const pdfBlob = pdf.output('blob');
+            const fileName = 'sarke_rapor_' + Date.now() + '.pdf';
+            const reader = new FileReader();
+            reader.onload = function () {
+                if (window.AndroidBridge && typeof window.AndroidBridge.isNativeApp === 'function' && window.AndroidBridge.isNativeApp()) {
+                    window.AndroidBridge.saveZip(this.result, fileName); // saveZip: Downloads klasörüne herhangi bir dosya türünü kaydeder
+                } else {
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = URL.createObjectURL(pdfBlob);
+                    link.click();
+                }
+            };
+            reader.readAsDataURL(pdfBlob);
+
+            batchProgressEl.textContent = `PDF tamamlandı: ${batchFiles.length} fotoğraf`;
+            downloadPdfBtn.disabled = false;
+        });
+
+        // =========================================================
+        // ŞABLON / GEÇMİŞ / STİL VERİLERİNİ JSON OLARAK DIŞA-İÇE AKTARMA
+        // =========================================================
+        document.getElementById('data-export-btn').addEventListener('click', () => {
+            const exportData = {
+                exportedAt: new Date().toISOString(),
+                user: activeUserId,
+                templates: getTemplates(),
+                history: getHistory(),
+                style: JSON.parse(localStorage.getItem(storageKey('sarke_style')) || '{}'),
+                positions: JSON.parse(localStorage.getItem(storageKey('sarke_positions')) || '{}')
+            };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = 'sarke_yedek_' + activeUserId + '_' + Date.now() + '.json';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        });
+
+        const dataImportFile = document.getElementById('data-import-file');
+        document.getElementById('data-import-btn').addEventListener('click', () => dataImportFile.click());
+        dataImportFile.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function () {
+                try {
+                    const data = JSON.parse(this.result);
+                    if (data.templates) localStorage.setItem(storageKey('sarke_templates'), JSON.stringify(data.templates));
+                    if (data.history) localStorage.setItem(storageKey('sarke_history'), JSON.stringify(data.history));
+                    if (data.style) localStorage.setItem(storageKey('sarke_style'), JSON.stringify(data.style));
+                    if (data.positions) localStorage.setItem(storageKey('sarke_positions'), JSON.stringify(data.positions));
+                    initTemplates();
+                    loadStylePrefs();
+                    loadPositions();
+                    alert('Yedek başarıyla içe aktarıldı.');
+                } catch (e) {
+                    alert('Geçersiz JSON dosyası: ' + e.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+    </script>
+
+</body>
+</html>
